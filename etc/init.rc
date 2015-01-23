@@ -11,6 +11,10 @@ on early-init
     start ueventd
     start healthd
 
+service set_permissive /sbin/toolbox setenforce 0
+    oneshot
+    seclabel u:r:recovery:s0
+
 on init
     export PATH /sbin:/system/bin
     export LD_LIBRARY_PATH .:/sbin
@@ -38,9 +42,9 @@ on fs
 
     write /sys/class/android_usb/android0/enable 0
     write /sys/class/android_usb/android0/idVendor 18D1
-    write /sys/class/android_usb/android0/idProduct D002
+    write /sys/class/android_usb/android0/idProduct 4EE2
     write /sys/class/android_usb/android0/f_ffs/aliases adb
-    write /sys/class/android_usb/android0/functions adb
+    write /sys/class/android_usb/android0/functions mtp,adb
     write /sys/class/android_usb/android0/iManufacturer ${ro.product.manufacturer}
     write /sys/class/android_usb/android0/iProduct ${ro.product.model}
     write /sys/class/android_usb/android0/iSerial ${ro.serialno}
@@ -82,7 +86,7 @@ on property:sys.storage.ums_enabled=1
 
 on property:sys.storage.ums_enabled=0
     write /sys/class/android_usb/android0/enable 0
-    write /sys/class/android_usb/android0/functions adb
+    write /sys/class/android_usb/android0/functions ${sys.usb.config}
     write /sys/class/android_usb/android0/enable ${service.adb.root}
 
 on property:sys.usb.config=none
@@ -113,7 +117,6 @@ service healthd /sbin/healthd -r
     seclabel u:r:healthd:s0
 
 service recovery /sbin/recovery
-    seclabel u:r:recovery:s0
 
 service adbd /sbin/adbd --root_seclabel=u:r:su:s0 --device_banner=recovery
     disabled

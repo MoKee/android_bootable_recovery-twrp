@@ -31,7 +31,7 @@
 	#include "cutils/properties.h"
 #endif
 
-#include "libblkid/blkid.h"
+#include "libblkid/include/blkid.h"
 #include "variables.h"
 #include "twcommon.h"
 #include "partitions.hpp"
@@ -42,22 +42,16 @@
 #include "twrpDU.hpp"
 #include "fixPermissions.hpp"
 #include "infomanager.hpp"
+#include "set_metadata.h"
 extern "C" {
 	#include "mtdutils/mtdutils.h"
 	#include "mtdutils/mounts.h"
-#ifdef TW_INCLUDE_CRYPTO_SAMSUNG
-	#include "crypto/libcrypt_samsung/include/libcrypt_samsung.h"
-#endif
 #ifdef USE_EXT4
 	#include "make_ext4fs.h"
 #endif
 
 #ifdef TW_INCLUDE_CRYPTO
-	#ifdef TW_INCLUDE_JB_CRYPTO
-		#include "crypto/jb/cryptfs.h"
-	#else
-		#include "crypto/ics/cryptfs.h"
-	#endif
+	#include "crypto/lollipop/cryptfs.h"
 #endif
 }
 #ifdef HAVE_SELINUX
@@ -135,6 +129,7 @@ TWPartition::TWPartition() {
 	Can_Be_Encrypted = false;
 	Is_Encrypted = false;
 	Is_Decrypted = false;
+	Mount_To_Decrypt = false;
 	Decrypted_Block_Device = "";
 	Display_Name = "";
 	Backup_Display_Name = "";
@@ -157,9 +152,9 @@ TWPartition::TWPartition() {
 	Format_Block_Size = 0;
 	Ignore_Blkid = false;
 	Retain_Layout_Version = false;
-#ifdef TW_INCLUDE_CRYPTO_SAMSUNG
-	EcryptFS_Password = "";
-#endif
+	Crypto_Key_Location = "footer";
+	MTP_Storage_ID = 0;
+	Can_Flash_Img = false;
 }
 
 TWPartition::~TWPartition(void) {
@@ -287,22 +282,7 @@ bool TWPartition::Process_Fstab_Line(string Line, bool Display_Error) {
 				LOGINFO("Data already decrypted, new block device: '%s'\n", crypto_blkdev);
 			} else if (!Mount(false)) {
 				if (Is_Present) {
-#ifdef TW_INCLUDE_JB_CRYPTO
-					// No extra flags needed
-#else
-					property_set("ro.crypto.fs_type", CRYPTO_FS_TYPE);
-					property_set("ro.crypto.fs_real_blkdev", CRYPTO_REAL_BLKDEV);
-					property_set("ro.crypto.fs_mnt_point", CRYPTO_MNT_POINT);
-					property_set("ro.crypto.fs_options", CRYPTO_FS_OPTIONS);
-					property_set("ro.crypto.fs_flags", CRYPTO_FS_FLAGS);
-					property_set("ro.crypto.keyfile.userdata", CRYPTO_KEY_LOC);
-#ifdef CRYPTO_SD_FS_TYPE
-					property_set("ro.crypto.sd_fs_type", CRYPTO_SD_FS_TYPE);
-					property_set("ro.crypto.sd_fs_real_blkdev", CRYPTO_SD_REAL_BLKDEV);
-					property_set("ro.crypto.sd_fs_mnt_point", EXPAND(TW_INTERNAL_STORAGE_PATH));
-#endif
-					property_set("rw.km_fips_status", "ready");
-#endif
+					set_partition_data(Actual_Block_Device.c_str(), Crypto_Key_Location.c_str(), Fstab_File_System.c_str());
 					if (cryptfs_check_footer() == 0) {
 						Is_Encrypted = true;
 						Is_Decrypted = false;
@@ -403,9 +383,11 @@ bool TWPartition::Process_Fstab_Line(string Line, bool Display_Error) {
 			Display_Name = "Boot";
 			Backup_Display_Name = Display_Name;
 			Can_Be_Backed_Up = true;
+			Can_Flash_Img = true;
 		} else if (Mount_Point == "/recovery") {
 			Display_Name = "Recovery";
 			Backup_Display_Name = Display_Name;
+			Can_Flash_Img = true;
 		}
 	}
 
@@ -570,6 +552,28 @@ bool TWPartition::Process_Flags(string Flags, bool Display_Error) {
 				Mount_Options.resize(Mount_Options.size() - 1);
 			}
 			Process_FS_Flags(Mount_Options, Mount_Flags);
+		} else if ((ptr_len > 12 && strncmp(ptr, "encryptable=", 12) == 0) || (ptr_len > 13 && strncmp(ptr, "forceencrypt=", 13) == 0)) {
+			ptr += 12;
+			if (*ptr == '=') ptr++;
+			if (*ptr == '\"') ptr++;
+
+			Crypto_Key_Location = ptr;
+			if (Crypto_Key_Location.substr(Crypto_Key_Location.size() - 1, 1) == "\"") {
+				Crypto_Key_Location.resize(Crypto_Key_Location.size() - 1);
+			}
+		} else if (ptr_len > 8 && strncmp(ptr, "mounttodecrypt", 14) == 0) {
+			Mount_To_Decrypt = true;
+		} else if (strncmp(ptr, "flashimg", 8) == 0) {
+			if (ptr_len == 8) {
+				Can_Flash_Img = true;
+			} else if (ptr_len == 10) {
+				ptr += 9;
+				if (*ptr == '1' || *ptr == 'y' || *ptr == 'Y') {
+					Can_Flash_Img = true;
+				} else {
+					Can_Flash_Img = false;
+				}
+			}
 		} else {
 			if (Display_Error)
 				LOGERR("Unhandled flag: '%s'\n", ptr);
@@ -1019,25 +1023,7 @@ bool TWPartition::Mount(bool Display_Error) {
 		}
 #endif
 	}
-#ifdef TW_INCLUDE_CRYPTO_SAMSUNG
-	string MetaEcfsFile = EXPAND(TW_EXTERNAL_STORAGE_PATH);
-	MetaEcfsFile += "/.MetaEcfsFile";
-	if (EcryptFS_Password.size() > 0 && PartitionManager.Mount_By_Path("/data", false) && TWFunc::Path_Exists(MetaEcfsFile)) {
-		if (mount_ecryptfs_drive(EcryptFS_Password.c_str(), Mount_Point.c_str(), Mount_Point.c_str(), 0) != 0) {
-			if (Display_Error)
-				LOGERR("Unable to mount ecryptfs for '%s'\n", Mount_Point.c_str());
-			else
-				LOGINFO("Unable to mount ecryptfs for '%s'\n", Mount_Point.c_str());
-		} else {
-			LOGINFO("Successfully mounted ecryptfs for '%s'\n", Mount_Point.c_str());
-			Is_Decrypted = true;
-		}
-	} else if (Mount_Point == EXPAND(TW_EXTERNAL_STORAGE_PATH)) {
-		if (Is_Decrypted)
-			LOGINFO("Mounting external storage, '%s' is not encrypted\n", Mount_Point.c_str());
-		Is_Decrypted = false;
-	}
-#endif
+
 	if (Removable)
 		Update_Size(Display_Error);
 
@@ -1057,20 +1043,7 @@ bool TWPartition::UnMount(bool Display_Error) {
 			return true; // Never unmount system if you're not supposed to unmount it
 
 		if (Is_Storage)
-			TWFunc::Toggle_MTP(false);
-
-#ifdef TW_INCLUDE_CRYPTO_SAMSUNG
-		if (EcryptFS_Password.size() > 0) {
-			if (unmount_ecryptfs_drive(Mount_Point.c_str()) != 0) {
-				if (Display_Error)
-					LOGERR("Unable to unmount ecryptfs for '%s'\n", Mount_Point.c_str());
-				else
-					LOGINFO("Unable to unmount ecryptfs for '%s'\n", Mount_Point.c_str());
-			} else {
-				LOGINFO("Successfully unmounted ecryptfs for '%s'\n", Mount_Point.c_str());
-			}
-		}
-#endif
+			PartitionManager.Remove_MTP_Storage(MTP_Storage_ID);
 
 		if (!Symlink_Mount_Point.empty())
 			umount(Symlink_Mount_Point.c_str());
@@ -1091,7 +1064,7 @@ bool TWPartition::UnMount(bool Display_Error) {
 }
 
 bool TWPartition::Wipe(string New_File_System) {
-	bool wiped = false, update_crypt = false, recreate_media = true, mtp_toggle = true;
+	bool wiped = false, update_crypt = false, recreate_media = true;
 	int check;
 	string Layout_Filename = Mount_Point + "/.layout_version";
 
@@ -1103,13 +1076,6 @@ bool TWPartition::Wipe(string New_File_System) {
 	if (Mount_Point == "/cache")
 		Log_Offset = 0;
 
-#ifdef TW_INCLUDE_CRYPTO_SAMSUNG
-	if (Mount_Point == "/data" && Mount(false)) {
-		if (TWFunc::Path_Exists("/data/system/edk_p_sd"))
-			TWFunc::copy_file("/data/system/edk_p_sd", "/tmp/edk_p_sd", 0600);
-	}
-#endif
-
 	if (Retain_Layout_Version && Mount(false) && TWFunc::Path_Exists(Layout_Filename))
 		TWFunc::copy_file(Layout_Filename, "/.layout_version", 0600);
 	else
@@ -1118,7 +1084,6 @@ bool TWPartition::Wipe(string New_File_System) {
 	if (Has_Data_Media && Current_File_System == New_File_System) {
 		wiped = Wipe_Data_Without_Wiping_Media();
 		recreate_media = false;
-		mtp_toggle = false;
 	} else {
 		DataManager::GetValue(TW_RM_RF_VAR, check);
 
@@ -1137,9 +1102,6 @@ bool TWPartition::Wipe(string New_File_System) {
 		else if (New_File_System == "f2fs")
 			wiped = Wipe_F2FS();
 		else {
-			if (Is_Storage) {
-				TWFunc::Toggle_MTP(true);
-			}
 			LOGERR("Unable to wipe '%s' -- unknown file system '%s'\n", Mount_Point.c_str(), New_File_System.c_str());
 			unlink("/.layout_version");
 			return false;
@@ -1148,15 +1110,6 @@ bool TWPartition::Wipe(string New_File_System) {
 	}
 
 	if (wiped) {
-#ifdef TW_INCLUDE_CRYPTO_SAMSUNG
-		if (Mount_Point == "/data" && Mount(false)) {
-			if (TWFunc::Path_Exists("/tmp/edk_p_sd")) {
-				Make_Dir("/data/system", true);
-				TWFunc::copy_file("/tmp/edk_p_sd", "/data/system/edk_p_sd", 0600);
-			}
-		}
-#endif
-
 		if (Mount_Point == "/cache")
 			DataManager::Output_Version();
 
@@ -1181,8 +1134,8 @@ bool TWPartition::Wipe(string New_File_System) {
 			Recreate_Media_Folder();
 		}
 	}
-	if (Is_Storage && mtp_toggle) {
-		TWFunc::Toggle_MTP(true);
+	if (Is_Storage) {
+		PartitionManager.Add_MTP_Storage(MTP_Storage_ID);
 	}
 	return wiped;
 }
@@ -1372,11 +1325,7 @@ bool TWPartition::Restore(string restore_folder, const unsigned long long *total
 	if (Is_File_System(Restore_File_System))
 		return Restore_Tar(restore_folder, Restore_File_System, total_restore_size, already_restored_size);
 	else if (Is_Image(Restore_File_System)) {
-		*already_restored_size += TWFunc::Get_File_Size(Backup_Name);
-		if (Restore_File_System == "emmc")
-			return Restore_DD(restore_folder, total_restore_size, already_restored_size);
-		else if (Restore_File_System == "mtd" || Restore_File_System == "bml")
-			return Restore_Flash_Image(restore_folder, total_restore_size, already_restored_size);
+		return Restore_Image(restore_folder, total_restore_size, already_restored_size, Restore_File_System);
 	}
 
 	LOGERR("Unknown restore method for '%s'\n", Mount_Point.c_str());
@@ -1432,23 +1381,35 @@ bool TWPartition::Wipe_Encryption() {
 
 	Has_Data_Media = false;
 	Decrypted_Block_Device = "";
+#ifdef TW_INCLUDE_CRYPTO
+	if (Is_Decrypted) {
+		if (!UnMount(true))
+			return false;
+		if (delete_crypto_blk_dev("userdata") != 0) {
+			LOGERR("Error deleting crypto block device, continuing anyway.\n");
+		}
+	}
+#endif
 	Is_Decrypted = false;
 	Is_Encrypted = false;
 	Find_Actual_Block_Device();
-	bool mtp_was_enabled = TWFunc::Toggle_MTP(false);
 	if (Wipe(Fstab_File_System)) {
 		Has_Data_Media = Save_Data_Media;
 		if (Has_Data_Media && !Symlink_Mount_Point.empty()) {
 			Recreate_Media_Folder();
+			if (Mount(false))
+				PartitionManager.Add_MTP_Storage(MTP_Storage_ID);
 		}
+		DataManager::SetValue(TW_IS_ENCRYPTED, 0);
 #ifndef TW_OEM_BUILD
 		gui_print("You may need to reboot recovery to be able to use /data again.\n");
 #endif
-		TWFunc::Toggle_MTP(mtp_was_enabled);
 		return true;
 	} else {
 		Has_Data_Media = Save_Data_Media;
 		LOGERR("Unable to format to remove encryption.\n");
+		if (Has_Data_Media && Mount(false))
+			PartitionManager.Add_MTP_Storage(MTP_Storage_ID);
 		return false;
 	}
 	return false;
@@ -1657,10 +1618,13 @@ bool TWPartition::Wipe_MTD() {
 }
 
 bool TWPartition::Wipe_RMRF() {
-	if (Is_Storage)
-		TWFunc::Toggle_MTP(false);
 	if (!Mount(true))
 		return false;
+	// This is the only wipe that leaves the partition mounted, so we
+	// must manually remove the partition from MTP if it is a storage
+	// partition.
+	if (Is_Storage)
+		PartitionManager.Remove_MTP_Storage(MTP_Storage_ID);
 
 	gui_print("Removing all files under '%s'\n", Mount_Point.c_str());
 	TWFunc::removeDir(Mount_Point, true);
@@ -1700,9 +1664,6 @@ bool TWPartition::Wipe_Data_Without_Wiping_Media() {
 	return Wipe_Encryption();
 #else
 	string dir;
-	#ifdef HAVE_SELINUX
-	fixPermissions perms;
-	#endif
 
 	// This handles wiping data on devices with "sdcard" in /data/media
 	if (!Mount(true))
@@ -1804,9 +1765,10 @@ bool TWPartition::Backup_DD(string backup_folder) {
 
 	Full_FileName = backup_folder + "/" + Backup_FileName;
 
-	Command = "dd if=" + Actual_Block_Device + " of='" + Full_FileName + "'" + " bs=" + DD_BS + "c count=1";
+	Command = "dd if=" + Actual_Block_Device + " of='" + Full_FileName + "'" + " bs=" + DD_BS + " count=1";
 	LOGINFO("Backup command: '%s'\n", Command.c_str());
 	TWFunc::Exec_Cmd(Command);
+	tw_set_default_metadata(Full_FileName.c_str());
 	if (TWFunc::Get_File_Size(Full_FileName) == 0) {
 		LOGERR("Backup file size for '%s' is 0 bytes.\n", Full_FileName.c_str());
 		return false;
@@ -1830,6 +1792,7 @@ bool TWPartition::Backup_Dump_Image(string backup_folder) {
 	Command = "dump_image " + MTD_Name + " '" + Full_FileName + "'";
 	LOGINFO("Backup command: '%s'\n", Command.c_str());
 	TWFunc::Exec_Cmd(Command);
+	tw_set_default_metadata(Full_FileName.c_str());
 	if (TWFunc::Get_File_Size(Full_FileName) == 0) {
 		// Actual size may not match backup size due to bad blocks on MTD devices so just check for 0 bytes
 		LOGERR("Backup file size for '%s' is 0 bytes.\n", Full_FileName.c_str());
@@ -1935,53 +1898,21 @@ bool TWPartition::Restore_Tar(string restore_folder, string Restore_File_System,
 	return ret;
 }
 
-bool TWPartition::Restore_DD(string restore_folder, const unsigned long long *total_restore_size, unsigned long long *already_restored_size) {
-	string Full_FileName, Command;
+bool TWPartition::Restore_Image(string restore_folder, const unsigned long long *total_restore_size, unsigned long long *already_restored_size, string Restore_File_System) {
+	string Full_FileName;
 	double display_percent, progress_percent;
 	char size_progress[1024];
 
 	TWFunc::GUI_Operation_Text(TW_RESTORE_TEXT, Display_Name, "Restoring");
 	Full_FileName = restore_folder + "/" + Backup_FileName;
 
-	if (!Find_Partition_Size()) {
-		LOGERR("Unable to find partition size for '%s'\n", Mount_Point.c_str());
-		return false;
+	if (Restore_File_System == "emmc") {
+		if (!Flash_Image_DD(Full_FileName))
+			return false;
+	} else if (Restore_File_System == "mtd" || Restore_File_System == "bml") {
+		if (!Flash_Image_FI(Full_FileName))
+			return false;
 	}
-	unsigned long long backup_size = TWFunc::Get_File_Size(Full_FileName);
-	if (backup_size > Size) {
-		LOGERR("Size (%iMB) of backup '%s' is larger than target device '%s' (%iMB)\n",
-			(int)(backup_size / 1048576LLU), Full_FileName.c_str(),
-			Actual_Block_Device.c_str(), (int)(Size / 1048576LLU));
-		return false;
-	}
-
-	gui_print("Restoring %s...\n", Display_Name.c_str());
-	Command = "dd bs=4096 if='" + Full_FileName + "' of=" + Actual_Block_Device;
-	LOGINFO("Restore command: '%s'\n", Command.c_str());
-	TWFunc::Exec_Cmd(Command);
-	display_percent = (double)(Restore_Size + *already_restored_size) / (double)(*total_restore_size) * 100;
-	sprintf(size_progress, "%lluMB of %lluMB, %i%%", (Restore_Size + *already_restored_size) / 1048576, *total_restore_size / 1048576, (int)(display_percent));
-	DataManager::SetValue("tw_size_progress", size_progress);
-	progress_percent = (display_percent / 100);
-	DataManager::SetProgress((float)(progress_percent));
-	*already_restored_size += Restore_Size;
-	return true;
-}
-
-bool TWPartition::Restore_Flash_Image(string restore_folder, const unsigned long long *total_restore_size, unsigned long long *already_restored_size) {
-	string Full_FileName, Command;
-	double display_percent, progress_percent;
-	char size_progress[1024];
-
-	gui_print("Restoring %s...\n", Display_Name.c_str());
-	Full_FileName = restore_folder + "/" + Backup_FileName;
-	// Sometimes flash image doesn't like to flash due to the first 2KB matching, so we erase first to ensure that it flashes
-	Command = "erase_image " + MTD_Name;
-	LOGINFO("Erase command: '%s'\n", Command.c_str());
-	TWFunc::Exec_Cmd(Command);
-	Command = "flash_image " + MTD_Name + " '" + Full_FileName + "'";
-	LOGINFO("Restore command: '%s'\n", Command.c_str());
-	TWFunc::Exec_Cmd(Command);
 	display_percent = (double)(Restore_Size + *already_restored_size) / (double)(*total_restore_size) * 100;
 	sprintf(size_progress, "%lluMB of %lluMB, %i%%", (Restore_Size + *already_restored_size) / 1048576, *total_restore_size / 1048576, (int)(display_percent));
 	DataManager::SetValue("tw_size_progress", size_progress);
@@ -2062,10 +1993,6 @@ void TWPartition::Find_Actual_Block_Device(void) {
 void TWPartition::Recreate_Media_Folder(void) {
 	string Command;
 
-	#ifdef HAVE_SELINUX
-	fixPermissions perms;
-	#endif
-
 	if (!Mount(true)) {
 		LOGERR("Unable to recreate /data/media folder.\n");
 	} else if (!TWFunc::Path_Exists("/data/media")) {
@@ -2073,7 +2000,13 @@ void TWPartition::Recreate_Media_Folder(void) {
 		LOGINFO("Recreating /data/media folder.\n");
 		mkdir("/data/media", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 #ifdef HAVE_SELINUX
+		// Attempt to set the correct SELinux contexts on the folder
+		fixPermissions perms;
 		perms.fixDataInternalContexts();
+		// Afterwards, we will try to set the
+		// default metadata that we were hopefully able to get during
+		// early boot.
+		tw_set_default_metadata("/data/media");
 #endif
 		// Toggle mount to ensure that "internal sdcard" gets mounted
 		PartitionManager.UnMount_By_Path(Symlink_Mount_Point, true);
@@ -2093,4 +2026,84 @@ void TWPartition::Recreate_AndSec_Folder(void) {
 		mkdir(Symlink_Path.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		PartitionManager.UnMount_By_Path(Symlink_Mount_Point, true);
 	}
+}
+
+uint64_t TWPartition::Get_Max_FileSize() {
+	uint64_t maxFileSize = 0;
+	const uint64_t constGB = (uint64_t) 1024 * 1024 * 1024;
+	const uint64_t constTB = (uint64_t) constGB * 1024;
+	const uint64_t constPB = (uint64_t) constTB * 1024;
+	const uint64_t constEB = (uint64_t) constPB * 1024;
+	if (Current_File_System == "ext4")
+		maxFileSize = 16 * constTB; //16 TB
+	else if (Current_File_System == "vfat")
+		maxFileSize = 4 * constGB; //4 GB
+	else if (Current_File_System == "ntfs")
+		maxFileSize = 256 * constTB; //256 TB
+	else if (Current_File_System == "exfat")
+		maxFileSize = 16 * constPB; //16 PB
+	else if (Current_File_System == "ext3")
+		maxFileSize = 2 * constTB; //2 TB
+	else if (Current_File_System == "f2fs")
+		maxFileSize = 3.94 * constTB; //3.94 TB
+	else
+		maxFileSize = 100000000L;
+	LOGINFO("Get_Max_FileSize::maxFileSize: %llu\n", maxFileSize);
+	return maxFileSize - 1;
+}
+
+bool TWPartition::Flash_Image(string Filename) {
+	string Restore_File_System;
+
+	LOGINFO("Image filename is: %s\n", Filename.c_str());
+
+	if (Backup_Method == FILES) {
+		LOGERR("Cannot flash images to file systems\n");
+		return false;
+	} else if (!Can_Flash_Img) {
+		LOGERR("Cannot flash images to partitions %s\n", Display_Name.c_str());
+		return false;
+	} else {
+		if (!Find_Partition_Size()) {
+			LOGERR("Unable to find partition size for '%s'\n", Mount_Point.c_str());
+			return false;
+		}
+		unsigned long long image_size = TWFunc::Get_File_Size(Filename);
+		if (image_size > Size) {
+			LOGERR("Size (%llu bytes) of image '%s' is larger than target device '%s' (%llu bytes)\n",
+				image_size, Filename.c_str(), Actual_Block_Device.c_str(), Size);
+			return false;
+		}
+		if (Backup_Method == DD)
+			return Flash_Image_DD(Filename);
+		else if (Backup_Method == FLASH_UTILS)
+			return Flash_Image_FI(Filename);
+	}
+
+	LOGERR("Unknown flash method for '%s'\n", Mount_Point.c_str());
+	return false;
+}
+
+bool TWPartition::Flash_Image_DD(string Filename) {
+	string Command;
+
+	gui_print("Flashing %s...\n", Display_Name.c_str());
+	Command = "dd bs=4096 if='" + Filename + "' of=" + Actual_Block_Device;
+	LOGINFO("Flash command: '%s'\n", Command.c_str());
+	TWFunc::Exec_Cmd(Command);
+	return true;
+}
+
+bool TWPartition::Flash_Image_FI(string Filename) {
+	string Command;
+
+	gui_print("Flashing %s...\n", Display_Name.c_str());
+	// Sometimes flash image doesn't like to flash due to the first 2KB matching, so we erase first to ensure that it flashes
+	Command = "erase_image " + MTD_Name;
+	LOGINFO("Erase command: '%s'\n", Command.c_str());
+	TWFunc::Exec_Cmd(Command);
+	Command = "flash_image " + MTD_Name + " '" + Filename + "'";
+	LOGINFO("Flash command: '%s'\n", Command.c_str());
+	TWFunc::Exec_Cmd(Command);
+	return true;
 }

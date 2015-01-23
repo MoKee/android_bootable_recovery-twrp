@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include "../twcommon.h"
+#include "../set_metadata.h"
 #include <cutils/properties.h>
 
 #include "MtpTypes.h"
@@ -115,9 +116,13 @@ MtpServer::~MtpServer() {
 }
 
 void MtpServer::addStorage(MtpStorage* storage) {
-	MTPD("addStorage(): storage: %x\n", storage);
-	mDatabase->createDB(storage, storage->getStorageID());
 	android::Mutex::Autolock autoLock(mMutex);
+	MTPD("addStorage(): storage: %x\n", storage);
+	if (getStorage(storage->getStorageID()) != NULL) {
+		MTPE("MtpServer::addStorage Storage for storage ID %i already exists.\n", storage->getStorageID());
+		return;
+	}
+	mDatabase->createDB(storage, storage->getStorageID());
 	mStorages.push(storage);
 	sendStoreAdded(storage->getStorageID());
 }
@@ -127,11 +132,31 @@ void MtpServer::removeStorage(MtpStorage* storage) {
 
 	for (size_t i = 0; i < mStorages.size(); i++) {
 		if (mStorages[i] == storage) {
+			MTPD("MtpServer::removeStorage calling sendStoreRemoved\n");
+			// First lock the mutex so that the inotify thread and main
+			// thread do not do anything while we remove the storage
+			// item, and to make sure we don't remove the item while an
+			// operation is in progress
+			mDatabase->lockMutex();
+			// Grab the storage ID before we delete the item from the
+			// database
+			MtpStorageID storageID = storage->getStorageID();
+			// Remove the item from the mStorages from the vector. At
+			// this point the main thread will no longer be able to find
+			// this storage item anymore.
 			mStorages.removeAt(i);
-			sendStoreRemoved(storage->getStorageID());
+			// Destroy the storage item, free up all the memory, kill
+			// the inotify thread.
+			mDatabase->destroyDB(storageID);
+			// Tell the host OS that the storage item is gone.
+			sendStoreRemoved(storageID);
+			// Unlock any remaining mutexes on other storage devices.
+			// If no storage devices exist anymore this will do nothing.
+			mDatabase->unlockMutex();
 			break;
 		}
 	}
+	MTPD("MtpServer::removeStorage DONE\n");
 }
 
 MtpStorage* MtpServer::getStorage(MtpStorageID id) {
@@ -167,11 +192,12 @@ void MtpServer::run() {
 		MTPD("About to read device...\n");
 		int ret = mRequest.read(fd);
 		if (ret < 0) {
-			MTPD("request read returned %d, errno: %d", ret, errno);
 			if (errno == ECANCELED) {
 				// return to top of loop and wait for next command
+				MTPD("request read returned %d ECANCELED, starting over\n", ret);
 				continue;
 			}
+			MTPE("request read returned %d, errno: %d, exiting MtpServer::run loop\n", ret, errno);
 			break;
 		}
 		MtpOperationCode operation = mRequest.getOperationCode();
@@ -188,11 +214,12 @@ void MtpServer::run() {
 		if (dataIn) {
 			int ret = mData.read(fd);
 			if (ret < 0) {
-				MTPD("data read returned %d, errno: %d", ret, errno);
 				if (errno == ECANCELED) {
 					// return to top of loop and wait for next command
+					MTPD("data read returned %d ECANCELED, starting over\n", ret);
 					continue;
 				}
+				MTPD("data read returned %d, errno: %d, exiting MtpServer::run loop\n", ret, errno);
 				break;
 			}
 			MTPD("received data:");
@@ -209,11 +236,12 @@ void MtpServer::run() {
 				mData.dump();
 				ret = mData.write(fd);
 				if (ret < 0) {
-					MTPD("request write returned %d, errno: %d", ret, errno);
 					if (errno == ECANCELED) {
 						// return to top of loop and wait for next command
+						MTPD("data write returned %d ECANCELED, starting over\n", ret);
 						continue;
 					}
+					MTPE("data write returned %d, errno: %d, exiting MtpServer::run loop\n", ret, errno);
 					break;
 				}
 			}
@@ -224,11 +252,12 @@ void MtpServer::run() {
 			MTPD("ret: %d\n", ret);
 			mResponse.dump();
 			if (ret < 0) {
-				MTPD("request write returned %d, errno: %d", ret, errno);
 				if (errno == ECANCELED) {
 					// return to top of loop and wait for next command
+					MTPD("response write returned %d ECANCELED, starting over\n", ret);
 					continue;
 				}
+				MTPE("response write returned %d, errno: %d, exiting MtpServer::run loop\n", ret, errno);
 				break;
 			}
 		} else {
@@ -274,6 +303,7 @@ void MtpServer::sendStoreAdded(MtpStorageID id) {
 void MtpServer::sendStoreRemoved(MtpStorageID id) {
 	MTPD("sendStoreRemoved %08X\n", id);
 	sendEvent(MTP_EVENT_STORE_REMOVED, id);
+	MTPD("MtpServer::sendStoreRemoved done\n");
 }
 
 void MtpServer::sendEvent(MtpEventCode code, uint32_t param1) {
@@ -975,6 +1005,7 @@ MtpResponseCode MtpServer::doSendObjectInfo() {
 		return MTP_RESPONSE_STORAGE_FULL;
 	uint64_t maxFileSize = storage->getMaxFileSize();
 	// check storage max file size
+	MTPD("maxFileSize: %ld\n", maxFileSize); 
 	if (maxFileSize != 0) {
 		// if mSendObjectFileSize is 0xFFFFFFFF, then all we know is the file size
 		// is >= 0xFFFFFFFF
@@ -1002,6 +1033,7 @@ MtpResponseCode MtpServer::doSendObjectInfo() {
 			return MTP_RESPONSE_GENERAL_ERROR;
 		}
 		chown((const char *)path, getuid(), mFileGroup);
+		tw_set_default_metadata((const char *)path);
 
 		// SendObject does not get sent for directories, so call endSendObject here instead
 		mDatabase->lockMutex();
@@ -1073,13 +1105,16 @@ MtpResponseCode MtpServer::doSendObject() {
 		ret = ioctl(mFD, MTP_RECEIVE_FILE, (unsigned long)&mfr);
 	}
 	close(mfr.fd);
+	tw_set_default_metadata((const char *)mSendObjectFilePath);
 
 	if (ret < 0) {
 		unlink(mSendObjectFilePath);
 		if (errno == ECANCELED)
 			result = MTP_RESPONSE_TRANSACTION_CANCELLED;
-		else
+		else {
+		    	MTPD("errno: %d\n", errno);
 			result = MTP_RESPONSE_GENERAL_ERROR;
+		}
 	}
 
 done:
@@ -1093,7 +1128,7 @@ done:
 	mSendObjectHandle = kInvalidObjectHandle;
 	MTPD("result: %d\n", result);
 	mSendObjectFormat = 0;
-	return MTP_RESPONSE_OK;
+	return result;
 }
 
 static void deleteRecursive(const char* path) {

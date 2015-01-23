@@ -39,11 +39,6 @@ extern "C"
 {
 #include "../twcommon.h"
 #include "../minuitwrp/minui.h"
-#ifdef HAVE_SELINUX
-#include "../minzip/Zip.h"
-#else
-#include "../minzipold/Zip.h"
-#endif
 #include <pixelflinger/pixelflinger.h>
 }
 
@@ -55,9 +50,7 @@ extern "C"
 #include "../twrp-functions.hpp"
 #include "../openrecoveryscript.hpp"
 #include "../orscmd/orscmd.h"
-#ifndef TW_NO_SCREEN_TIMEOUT
 #include "blanktimer.hpp"
-#endif
 
 // Enable to print render time of each frame to the log file
 //#define PRINT_RENDER_TIME 1
@@ -75,10 +68,8 @@ static int gForceRender = 0;
 pthread_mutex_t gForceRendermutex;
 static int gNoAnimation = 1;
 static int gGuiInputRunning = 0;
-static int gCmdLineRunning = 0;
-#ifndef TW_NO_SCREEN_TIMEOUT
 blanktimer blankTimer;
-#endif
+int ors_read_fd = -1;
 
 // Needed by pages.cpp too
 int gGuiRunning = 0;
@@ -111,7 +102,7 @@ static void curtainSet()
 {
 	gr_color(0, 0, 0, 255);
 	gr_fill(0, 0, gr_fb_width(), gr_fb_height());
-	gr_blit(gCurtain, 0, 0, gr_get_width(gCurtain), gr_get_height(gCurtain), 0, 0);
+	gr_blit(gCurtain, 0, 0, gr_get_width(gCurtain), gr_get_height(gCurtain), TW_X_OFFSET, TW_Y_OFFSET);
 	gr_flip();
 }
 
@@ -183,24 +174,23 @@ void curtainClose()
 
 static void * input_thread(void *cookie)
 {
-
 	int drag = 0;
 	static int touch_and_hold = 0, dontwait = 0;
 	static int touch_repeat = 0, key_repeat = 0;
 	static int x = 0, y = 0;
-	static int lshift = 0, rshift = 0;
 	static struct timeval touchStart;
-	string seconds;
 	HardwareKeyboard *kb = PageManager::GetHardwareKeyboard();
 	MouseCursor *cursor = PageManager::GetMouseCursor();
 
 #ifndef TW_NO_SCREEN_TIMEOUT
-	//start screen timeout threads
-	blankTimer.setTimerThread();
-	DataManager::GetValue("tw_screen_timeout_secs", seconds);
-	blankTimer.setTime(atoi(seconds.c_str()));
+	{
+		string seconds;
+		DataManager::GetValue("tw_screen_timeout_secs", seconds);
+		blankTimer.setTime(atoi(seconds.c_str()));
+		blankTimer.resetTimerAndUnblank();
+	}
 #else
-	LOGINFO("Skipping screen timeout threads: TW_NO_SCREEN_TIMEOUT is set\n");
+	LOGINFO("Skipping screen timeout: TW_NO_SCREEN_TIMEOUT is set\n");
 #endif
 
 	for (;;)
@@ -230,9 +220,7 @@ static void * input_thread(void *cookie)
 				LOGERR("TOUCH_HOLD: %d,%d\n", x, y);
 #endif
 				PageManager::NotifyTouch(TOUCH_HOLD, x, y);
-#ifndef TW_NO_SCREEN_TIMEOUT
 				blankTimer.resetTimerAndUnblank();
-#endif
 			}
 			else if (touch_repeat && mtime > 100)
 			{
@@ -241,9 +229,7 @@ static void * input_thread(void *cookie)
 #endif
 				gettimeofday(&touchStart, NULL);
 				PageManager::NotifyTouch(TOUCH_REPEAT, x, y);
-#ifndef TW_NO_SCREEN_TIMEOUT
 				blankTimer.resetTimerAndUnblank();
-#endif
 			}
 			else if (key_repeat == 1 && mtime > 500)
 			{
@@ -253,9 +239,7 @@ static void * input_thread(void *cookie)
 				gettimeofday(&touchStart, NULL);
 				key_repeat = 2;
 				kb->KeyRepeat();
-#ifndef TW_NO_SCREEN_TIMEOUT
 				blankTimer.resetTimerAndUnblank();
-#endif
 
 			}
 			else if (key_repeat == 2 && mtime > 100)
@@ -265,9 +249,7 @@ static void * input_thread(void *cookie)
 #endif
 				gettimeofday(&touchStart, NULL);
 				kb->KeyRepeat();
-#ifndef TW_NO_SCREEN_TIMEOUT
 				blankTimer.resetTimerAndUnblank();
-#endif
 			}
 		}
 		else if (ev.type == EV_ABS)
@@ -284,9 +266,7 @@ static void * input_thread(void *cookie)
 					LOGERR("TOUCH_RELEASE: %d,%d\n", x, y);
 #endif
 					PageManager::NotifyTouch(TOUCH_RELEASE, x, y);
-#ifndef TW_NO_SCREEN_TIMEOUT
 					blankTimer.resetTimerAndUnblank();
-#endif
 					touch_and_hold = 0;
 					touch_repeat = 0;
 					if (!key_repeat)
@@ -311,9 +291,7 @@ static void * input_thread(void *cookie)
 						key_repeat = 0;
 						gettimeofday(&touchStart, NULL);
 					}
-#ifndef TW_NO_SCREEN_TIMEOUT
 					blankTimer.resetTimerAndUnblank();
-#endif
 				}
 				else
 				{
@@ -325,9 +303,7 @@ static void * input_thread(void *cookie)
 						if (PageManager::NotifyTouch(TOUCH_DRAG, x, y) > 0)
 							state = 1;
 						key_repeat = 0;
-#ifndef TW_NO_SCREEN_TIMEOUT
 						blankTimer.resetTimerAndUnblank();
-#endif
 					}
 				}
 			}
@@ -389,17 +365,13 @@ static void * input_thread(void *cookie)
 					touch_repeat = 0;
 					dontwait = 1;
 					gettimeofday(&touchStart, NULL);
-#ifndef TW_NO_SCREEN_TIMEOUT
 					blankTimer.resetTimerAndUnblank();
-#endif
 				} else {
 					key_repeat = 0;
 					touch_and_hold = 0;
 					touch_repeat = 0;
 					dontwait = 0;
-#ifndef TW_NO_SCREEN_TIMEOUT
 					blankTimer.resetTimerAndUnblank();
-#endif
 				}
 			} else {
 				// This is a key release
@@ -408,9 +380,7 @@ static void * input_thread(void *cookie)
 				touch_and_hold = 0;
 				touch_repeat = 0;
 				dontwait = 0;
-#ifndef TW_NO_SCREEN_TIMEOUT
 				blankTimer.resetTimerAndUnblank();
-#endif
 			}
 		}
 		else if(ev.type == EV_REL)
@@ -437,83 +407,97 @@ static void * input_thread(void *cookie)
 	return NULL;
 }
 
-static void * command_thread(void *cookie)
+static void setup_ors_command()
 {
-	int read_fd;
-	FILE* orsout;
-	char command[1024], result[512];
-
-	LOGINFO("Starting command line thread\n");
+	ors_read_fd = -1;
 
 	unlink(ORS_INPUT_FILE);
 	if (mkfifo(ORS_INPUT_FILE, 06660) != 0) {
 		LOGINFO("Unable to mkfifo %s\n", ORS_INPUT_FILE);
-		return 0;
+		return;
 	}
 	unlink(ORS_OUTPUT_FILE);
 	if (mkfifo(ORS_OUTPUT_FILE, 06666) != 0) {
 		LOGINFO("Unable to mkfifo %s\n", ORS_OUTPUT_FILE);
 		unlink(ORS_INPUT_FILE);
-		return 0;
+		return;
 	}
 
-	read_fd = open(ORS_INPUT_FILE, O_RDONLY);
-	if (read_fd < 0) {
+	ors_read_fd = open(ORS_INPUT_FILE, O_RDONLY | O_NONBLOCK);
+	if (ors_read_fd < 0) {
 		LOGINFO("Unable to open %s\n", ORS_INPUT_FILE);
 		unlink(ORS_INPUT_FILE);
 		unlink(ORS_OUTPUT_FILE);
-		return 0;
 	}
+}
 
-	while (!gGuiRunning)
-		sleep(1);
+static void ors_command_read()
+{
+	FILE* orsout;
+	char command[1024], result[512];
+	int set_page_done = 0, read_ret = 0;
 
-	for (;;) {
-		while (read(read_fd, &command, sizeof(command)) > 0) {
-			command[1022] = '\n';
-			command[1023] = '\0';
-			LOGINFO("Command '%s' received\n", command);
-			orsout = fopen(ORS_OUTPUT_FILE, "w");
-			if (!orsout) {
-				close(read_fd);
-				LOGINFO("Unable to fopen %s\n", ORS_OUTPUT_FILE);
-				unlink(ORS_INPUT_FILE);
-				unlink(ORS_OUTPUT_FILE);
-				return 0;
-			}
-			if (DataManager::GetIntValue("tw_busy") != 0) {
-				strcpy(result, "Failed, operation in progress\n");
-				fprintf(orsout, "%s", result);
-				LOGINFO("Command cannot be performed, operation in progress.\n");
-			} else {
-				if (gui_console_only() == 0) {
-					LOGINFO("Console started successfully\n");
-					gui_set_FILE(orsout);
-					if (strlen(command) > 11 && strncmp(command, "runscript", 9) == 0) {
-						char* filename = command + 11;
-						if (OpenRecoveryScript::copy_script_file(filename) == 0) {
-							LOGERR("Unable to copy script file\n");
-						} else {
-							OpenRecoveryScript::run_script_file();
-						}
-					} else if (strlen(command) > 5 && strncmp(command, "get", 3) == 0) {
-						char* varname = command + 4;
-						string temp;
-						DataManager::GetValue(varname, temp);
-						gui_print("%s = %s\n", varname, temp.c_str());
-					} else if (OpenRecoveryScript::Insert_ORS_Command(command)) {
+	if ((read_ret = read(ors_read_fd, &command, sizeof(command))) > 0) {
+		command[1022] = '\n';
+		command[1023] = '\0';
+		LOGINFO("Command '%s' received\n", command);
+		orsout = fopen(ORS_OUTPUT_FILE, "w");
+		if (!orsout) {
+			close(ors_read_fd);
+			ors_read_fd = -1;
+			LOGINFO("Unable to fopen %s\n", ORS_OUTPUT_FILE);
+			unlink(ORS_INPUT_FILE);
+			unlink(ORS_OUTPUT_FILE);
+			return;
+		}
+		if (DataManager::GetIntValue("tw_busy") != 0) {
+			strcpy(result, "Failed, operation in progress\n");
+			fprintf(orsout, "%s", result);
+			LOGINFO("Command cannot be performed, operation in progress.\n");
+		} else {
+			if (gui_console_only() == 0) {
+				LOGINFO("Console started successfully\n");
+				gui_set_FILE(orsout);
+				if (strlen(command) > 11 && strncmp(command, "runscript", 9) == 0) {
+					char* filename = command + 11;
+					if (OpenRecoveryScript::copy_script_file(filename) == 0) {
+						LOGERR("Unable to copy script file\n");
+					} else {
 						OpenRecoveryScript::run_script_file();
 					}
-					gui_set_FILE(NULL);
-					gGuiConsoleTerminate = 1;
+				} else if (strlen(command) > 5 && strncmp(command, "get", 3) == 0) {
+					char* varname = command + 4;
+					string temp;
+					DataManager::GetValue(varname, temp);
+					gui_print("%s = %s\n", varname, temp.c_str());
+				} else if (strlen(command) > 9 && strncmp(command, "decrypt", 7) == 0) {
+					char* pass = command + 8;
+					gui_print("Attempting to decrypt data partition via command line.\n");
+					if (PartitionManager.Decrypt_Device(pass) == 0) {
+						set_page_done = 1;
+					}
+				} else if (OpenRecoveryScript::Insert_ORS_Command(command)) {
+					OpenRecoveryScript::run_script_file();
 				}
+				gui_set_FILE(NULL);
+				gGuiConsoleTerminate = 1;
 			}
-			fclose(orsout);
 		}
+		fclose(orsout);
+		LOGINFO("Done reading ORS command from command line\n");
+		if (set_page_done) {
+			DataManager::SetValue("tw_page_done", 1);
+		} else {
+			// The select function will return ready to read and the
+			// read function will return errno 19 no such device unless
+			// we set everything up all over again.
+			close(ors_read_fd);
+			setup_ors_command();
+		}
+	} else {
+		LOGINFO("ORS command line read returned an error: %i, %i, %s\n", read_ret, errno, strerror(errno));
 	}
-	close(read_fd);
-	LOGINFO("Command thread exiting\n");
-	return 0;
+	return;
 }
 
 // This special function will return immediately the first time, but then
@@ -551,8 +535,11 @@ static void loopTimer(void)
 	} while (1);
 }
 
-static int runPages(void)
+static int runPages(const char *page_name, const int stop_on_page_done)
 {
+	if (page_name)
+		gui_changePage(page_name);
+
 	// Raise the curtain
 	if (gCurtain != NULL)
 	{
@@ -572,10 +559,27 @@ static int runPages(void)
 	timespec start, end;
 	int32_t render_t, flip_t;
 #endif
+#ifndef TW_OEM_BUILD
+	struct timeval timeout;
+	fd_set fdset;
+	int has_data = 0;
+#endif
 
 	for (;;)
 	{
 		loopTimer();
+#ifndef TW_OEM_BUILD
+		if (ors_read_fd > 0) {
+			FD_ZERO(&fdset);
+			FD_SET(ors_read_fd, &fdset);
+			timeout.tv_sec = 0;
+			timeout.tv_usec = 1;
+			has_data = select(ors_read_fd+1, &fdset, NULL, NULL, &timeout);
+			if (has_data > 0) {
+				ors_command_read();
+			}
+		}
+#endif
 
 		if (gGuiConsoleRunning) {
 			continue;
@@ -620,63 +624,18 @@ static int runPages(void)
 			flip();
 		}
 
-		if (DataManager::GetIntValue("tw_gui_done") != 0)
-			break;
-	}
-
-	gGuiRunning = 0;
-	return 0;
-}
-
-static int runPage(const char *page_name)
-{
-	gui_changePage(page_name);
-
-	// Raise the curtain
-	if (gCurtain != NULL)
-	{
-		gr_surface surface;
-
-		PageManager::Render();
-		gr_get_surface(&surface);
-		curtainRaise(surface);
-		gr_free_surface(surface);
-	}
-
-	gGuiRunning = 1;
-
-	DataManager::SetValue("tw_loaded", 1);
-
-	for (;;)
-	{
-		loopTimer();
-
-		if (!gForceRender)
-		{
-			int ret;
-
-			ret = PageManager::Update();
-			if (ret > 1)
-				PageManager::Render();
-
-			if (ret > 0)
-				flip();
-		}
-		else
-		{
-			pthread_mutex_lock(&gForceRendermutex);
-			gForceRender = 0;
-			pthread_mutex_unlock(&gForceRendermutex);
-			PageManager::Render();
-			flip();
-		}
-		if (DataManager::GetIntValue("tw_page_done") != 0)
+		blankTimer.checkForTimeout();
+		if (stop_on_page_done && DataManager::GetIntValue("tw_page_done") != 0)
 		{
 			gui_changePage("main");
 			break;
 		}
+		if (DataManager::GetIntValue("tw_gui_done") != 0)
+			break;
 	}
-
+	if (ors_read_fd > 0)
+		close(ors_read_fd);
+	ors_read_fd = -1;
 	gGuiRunning = 0;
 	return 0;
 }
@@ -755,8 +714,6 @@ std::string gui_parse_text(string inText)
 
 extern "C" int gui_init(void)
 {
-	int fd;
-
 	gr_init();
 
 	if (res_create_surface("/res/images/curtain.jpg", &gCurtain))
@@ -835,7 +792,44 @@ error:
 	return -1;
 }
 
+extern "C" int gui_loadCustomResources(void)
+{
+#ifndef TW_OEM_BUILD
+	if (!PartitionManager.Mount_Settings_Storage(false)) {
+		LOGERR("Unable to mount settings storage during GUI startup.\n");
+		return -1;
+	}
+
+	std::string theme_path = DataManager::GetSettingsStoragePath();
+	theme_path += "/TWRP/theme/ui.zip";
+	// Check for a custom theme
+	if (TWFunc::Path_Exists(theme_path)) {
+		// There is a custom theme, try to load it
+		if (PageManager::ReloadPackage("TWRP", theme_path)) {
+			// Custom theme failed to load, try to load stock theme
+			if (PageManager::ReloadPackage("TWRP", "/res/ui.xml")) {
+				LOGERR("Failed to load base packages.\n");
+				goto error;
+			}
+		}
+	}
+	// Set the default package
+	PageManager::SelectPackage("TWRP");
+#endif
+	return 0;
+
+error:
+	LOGERR("An internal error has occurred: unable to load theme.\n");
+	gGuiInitialized = 0;
+	return -1;
+}
+
 extern "C" int gui_start(void)
+{
+	return gui_startPage(NULL, 1, 0);
+}
+
+extern "C" int gui_startPage(const char *page_name, const int allow_commands, int stop_on_page_done)
 {
 	if (!gGuiInitialized)
 		return -1;
@@ -856,40 +850,19 @@ extern "C" int gui_start(void)
 		gGuiInputRunning = 1;
 	}
 #ifndef TW_OEM_BUILD
-	if (!gCmdLineRunning)
+	if (allow_commands)
 	{
-		// Start by spinning off an input handler.
-		pthread_t t;
-		pthread_create(&t, NULL, command_thread, NULL);
-		gCmdLineRunning = 1;
+		if (ors_read_fd < 0)
+			setup_ors_command();
+	} else {
+		if (ors_read_fd >= 0) {
+			close(ors_read_fd);
+			ors_read_fd = -1;
+		}
 	}
 #endif
-	return runPages();
-}
-
-extern "C" int gui_startPage(const char *page_name)
-{
-	if (!gGuiInitialized)
-		return -1;
-
-	gGuiConsoleTerminate = 1;
-
-	while (gGuiConsoleRunning)
-		loopTimer();
-
-	// Set the default package
-	PageManager::SelectPackage("TWRP");
-
-	if (!gGuiInputRunning)
-	{
-		// Start by spinning off an input handler.
-		pthread_t t;
-		pthread_create(&t, NULL, input_thread, NULL);
-		gGuiInputRunning = 1;
-	}
-
 	DataManager::SetValue("tw_page_done", 0);
-	return runPage(page_name);
+	return runPages(page_name, stop_on_page_done);
 }
 
 static void * console_thread(void *cookie)

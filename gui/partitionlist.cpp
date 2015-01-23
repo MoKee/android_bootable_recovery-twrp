@@ -749,6 +749,7 @@ int GUIPartitionList::NotifyTouch(TOUCH_STATE state, int x, int y)
 				if (!mList.at(actualSelection).selected) {
 					if (PartitionManager.Mount_By_Path(mList.at(actualSelection).Mount_Point, true)) {
 						mList.at(actualSelection).selected = 1;
+						PartitionManager.Add_MTP_Storage(mList.at(actualSelection).Mount_Point);
 						mUpdate = 1;
 					}
 				} else {
@@ -792,6 +793,10 @@ int GUIPartitionList::NotifyTouch(TOUCH_STATE state, int x, int y)
 						DataManager::SetValue(mVariable, str);
 					}
 				} else {
+					if (ListType == "flashimg") { // only one item can be selected for flashing images
+						for (int i=0; i<listSize; i++)
+							mList.at(i).selected = 0;
+					}
 					if (mList.at(actualSelection).selected)
 						mList.at(actualSelection).selected = 0;
 					else

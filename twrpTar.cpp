@@ -21,6 +21,7 @@ extern "C" {
 	#include "libtar/libtar.h"
 	#include "twrpTar.h"
 	#include "tarWrite.h"
+	#include "set_metadata.h"
 }
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -43,6 +44,9 @@ extern "C" {
 #ifndef BUILD_TWRPTAR_MAIN
 #include "data.hpp"
 #include "infomanager.hpp"
+extern "C" {
+	#include "set_metadata.h"
+}
 #endif //ndef BUILD_TWRPTAR_MAIN
 
 using namespace std;
@@ -300,7 +304,7 @@ int twrpTar::createTarFork(const unsigned long long *overall_size, const unsigne
 						_exit(-1);
 					} else {
 						LOGINFO("Joined thread %i.\n", i);
-						ret = (int)thread_return;
+						ret = *((int *)thread_return);
 						if (ret != 0) {
 							thread_error = 1;
 							LOGERR("Thread %i returned an error %i.\n", i, ret);
@@ -532,7 +536,7 @@ int twrpTar::extractTarFork(const unsigned long long *overall_size, unsigned lon
 							_exit(-1);
 						} else {
 							LOGINFO("Joined thread %i.\n", i);
-							ret = (int)thread_return;
+							ret = *((int *)thread_return);
 							if (ret != 0) {
 								thread_error = 1;
 								LOGERR("Thread %i returned an error %i.\n", i, ret);
@@ -751,7 +755,7 @@ int twrpTar::tarList(std::vector<TarListStruct> *TarList, unsigned thread_id) {
 		LOGERR("Error closing '%s' on thread %i\n", tarfn.c_str(), thread_id);
 		return -3;
 	}
-	LOGINFO("Thread id %i tarList done, %i archives.\n", thread_id, archive_count, i, list_size);
+	LOGINFO("Thread id %i tarList done, %i archives.\n", thread_id, archive_count);
 	return 0;
 }
 
@@ -1242,6 +1246,9 @@ int twrpTar::closeTar() {
 		LOGERR("Backup file size for '%s' is 0 bytes.\n", tarfn.c_str());
 		return -1;
 	}
+#ifndef BUILD_TWRPTAR_MAIN
+	tw_set_default_metadata(tarfn.c_str());
+#endif
 	return 0;
 }
 

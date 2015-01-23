@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "cutils/properties.h"
 extern "C" {
@@ -35,6 +36,7 @@ extern "C" {
 
 extern "C" {
 #include "gui/gui.h"
+#include "set_metadata.h"
 }
 #include "twcommon.h"
 #include "twrp-functions.hpp"
@@ -71,8 +73,11 @@ int main(int argc, char **argv) {
 	freopen(TMP_LOG_FILE, "a", stderr);
 	setbuf(stderr, NULL);
 
+	signal(SIGPIPE, SIG_IGN);
+
 	// Handle ADB sideload
 	if (argc == 3 && strcmp(argv[1], "--adbd") == 0) {
+		property_set("ctl.stop", "adbd");
 		adb_main(argv[2]);
 		return 0;
 	}
@@ -91,7 +96,7 @@ int main(int argc, char **argv) {
 	property_set("ro.twrp.version", TW_VERSION_STR);
 
 	time_t StartupTime = time(NULL);
-	printf("Starting TWRP %s on %s (pid %d)", TW_VERSION_STR, ctime(&StartupTime), getpid());
+	printf("Starting TWRP %s on %s (pid %d)\n", TW_VERSION_STR, ctime(&StartupTime), getpid());
 
 	// Load default values to set DataManager constants and handle ifdefs
 	DataManager::SetDefaultValues();
@@ -271,8 +276,17 @@ int main(int argc, char **argv) {
 	// Offer to decrypt if the device is encrypted
 	if (DataManager::GetIntValue(TW_IS_ENCRYPTED) != 0) {
 		LOGINFO("Is encrypted, do decrypt page first\n");
-		if (gui_startPage("decrypt") != 0) {
+		if (gui_startPage("decrypt", 1, 1) != 0) {
 			LOGERR("Failed to start decrypt GUI page.\n");
+		} else {
+			// Check for and load custom theme if present
+			gui_loadCustomResources();
+		}
+	} else if (datamedia) {
+		if (tw_get_default_metadata(DataManager::GetSettingsStoragePath().c_str()) != 0) {
+			LOGINFO("Failed to get default contexts and file mode for storage files.\n");
+		} else {
+			LOGINFO("Got default contexts and file mode for storage files.\n");
 		}
 	}
 
@@ -301,26 +315,23 @@ int main(int argc, char **argv) {
 	property_get("mtp.crash_check", mtp_crash_check, "0");
 	if (strcmp(mtp_crash_check, "0") == 0) {
 		property_set("mtp.crash_check", "1");
-		if (DataManager::GetIntValue(TW_IS_ENCRYPTED) != 0) {
-			if (DataManager::GetIntValue(TW_IS_DECRYPTED) != 0 && DataManager::GetIntValue("tw_mtp_enabled") == 1) {
-				LOGINFO("Enabling MTP during startup\n");
-				if (!PartitionManager.Enable_MTP())
-					PartitionManager.Disable_MTP();
-				else
-					gui_print("MTP Enabled\n");
-			}
-		} else if (DataManager::GetIntValue("tw_mtp_enabled") == 1) {
+		if (DataManager::GetIntValue("tw_mtp_enabled") == 1 && ((DataManager::GetIntValue(TW_IS_ENCRYPTED) != 0 && DataManager::GetIntValue(TW_IS_DECRYPTED) != 0) || DataManager::GetIntValue(TW_IS_ENCRYPTED) == 0)) {
 			LOGINFO("Enabling MTP during startup\n");
 			if (!PartitionManager.Enable_MTP())
 				PartitionManager.Disable_MTP();
 			else
 				gui_print("MTP Enabled\n");
+		} else {
+			PartitionManager.Disable_MTP();
 		}
 		property_set("mtp.crash_check", "0");
 	} else {
 		gui_print_color("warning", "MTP Crashed, not starting MTP on boot.\n");
 		DataManager::SetValue("tw_mtp_enabled", 0);
+		PartitionManager.Disable_MTP();
 	}
+#else
+	PartitionManager.Disable_MTP();
 #endif
 
 	// Launch the main GUI
@@ -329,20 +340,16 @@ int main(int argc, char **argv) {
 	// Check for su to see if the device is rooted or not
 	if (PartitionManager.Mount_By_Path("/system", false)) {
 		// Disable flashing of stock recovery
-		if (TWFunc::Path_Exists("/system/recovery-from-boot.p") && TWFunc::Path_Exists("/system/etc/install-recovery.sh")) {
+		if (TWFunc::Path_Exists("/system/recovery-from-boot.p")) {
 			rename("/system/recovery-from-boot.p", "/system/recovery-from-boot.bak");
 			gui_print("Renamed stock recovery file in /system to prevent\nthe stock ROM from replacing TWRP.\n");
 		}
 		if (TWFunc::Path_Exists("/supersu/su") && !TWFunc::Path_Exists("/system/bin/su") && !TWFunc::Path_Exists("/system/xbin/su") && !TWFunc::Path_Exists("/system/bin/.ext/.su")) {
 			// Device doesn't have su installed
 			DataManager::SetValue("tw_busy", 1);
-			if (gui_startPage("installsu") != 0) {
+			if (gui_startPage("installsu", 1, 1) != 0) {
 				LOGERR("Failed to start SuperSU install page.\n");
 			}
-		} else if (TWFunc::Check_su_Perms() > 0) {
-			// su perms are set incorrectly
-			LOGINFO("Root permissions appear to be lost... fixing. (This will always happen on 4.3+ ROMs with SELinux.\n");
-			TWFunc::Fix_su_Perms();
 		}
 		sync();
 		PartitionManager.UnMount_By_Path("/system", false);

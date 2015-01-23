@@ -38,10 +38,12 @@
 #include "fixPermissions.hpp"
 #include "twrpDigest.hpp"
 #include "twrpDU.hpp"
+#include "set_metadata.h"
 
 #ifdef TW_HAS_MTP
 #include "mtp/mtp_MtpServer.hpp"
 #include "mtp/twrpMtp.hpp"
+#include "mtp/MtpMessage.hpp"
 #endif
 
 extern "C" {
@@ -49,17 +51,14 @@ extern "C" {
 }
 
 #ifdef TW_INCLUDE_CRYPTO
-	#ifdef TW_INCLUDE_JB_CRYPTO
-		#include "crypto/jb/cryptfs.h"
-	#else
-		#include "crypto/ics/cryptfs.h"
-	#endif
+	#include "crypto/lollipop/cryptfs.h"
 #endif
 
 extern bool datamedia;
 
 TWPartitionManager::TWPartitionManager(void) {
 	mtp_was_enabled = false;
+	mtp_write_fd = -1;
 }
 
 int TWPartitionManager::Process_Fstab(string Fstab_Filename, bool Display_Error) {
@@ -67,6 +66,7 @@ int TWPartitionManager::Process_Fstab(string Fstab_Filename, bool Display_Error)
 	char fstab_line[MAX_FSTAB_LINE_LENGTH];
 	TWPartition* settings_partition = NULL;
 	TWPartition* andsec_partition = NULL;
+	unsigned int storageid = 1 << 16;	// upper 16 bits are for physical storage device, we pretend to have only one
 
 	fstabFile = fopen(Fstab_Filename.c_str(), "rt");
 	if (fstabFile == NULL) {
@@ -85,6 +85,10 @@ int TWPartitionManager::Process_Fstab(string Fstab_Filename, bool Display_Error)
 		memset(fstab_line, 0, sizeof(fstab_line));
 
 		if (partition->Process_Fstab_Line(line, Display_Error)) {
+			if (partition->Is_Storage) {
+				++storageid;
+				partition->MTP_Storage_ID = storageid;
+			}
 			if (!settings_partition && partition->Is_Settings_Storage && partition->Is_Present) {
 				settings_partition = partition;
 			} else {
@@ -109,6 +113,9 @@ int TWPartitionManager::Process_Fstab(string Fstab_Filename, bool Display_Error)
 			datamedia = true;
 			Dat->Setup_Data_Media();
 			settings_partition = Dat;
+			// Since /data was not considered a storage partition earlier, we still need to assign an MTP ID
+			++storageid;
+			Dat->MTP_Storage_ID = storageid;
 		}
 	}
 	if (!settings_partition) {
@@ -137,6 +144,24 @@ int TWPartitionManager::Process_Fstab(string Fstab_Filename, bool Display_Error)
 	if (settings_partition) {
 		Setup_Settings_Storage_Partition(settings_partition);
 	}
+#ifdef TW_INCLUDE_CRYPTO
+	TWPartition* Decrypt_Data = Find_Partition_By_Path("/data");
+	if (Decrypt_Data && Decrypt_Data->Is_Encrypted && !Decrypt_Data->Is_Decrypted) {
+		int password_type = cryptfs_get_password_type();
+		if (password_type == CRYPT_TYPE_DEFAULT) {
+			LOGINFO("Device is encrypted with the default password, attempting to decrypt.\n");
+			if (Decrypt_Device("default_password") == 0) {
+				gui_print("Successfully decrypted with default password.\n");
+				DataManager::SetValue(TW_IS_ENCRYPTED, 0);
+			} else {
+				LOGERR("Unable to decrypt with default password.");
+				LOGERR("You may need to perform a Format Data.\n");
+			}
+		} else {
+			DataManager::SetValue("TW_CRYPTO_TYPE", password_type);
+		}
+	}
+#endif
 	Update_System_Details();
 	UnMount_Main_Partitions();
 	return true;
@@ -241,6 +266,10 @@ void TWPartitionManager::Output_Partition(TWPartition* Part) {
 		printf("Ignore_Blkid ");
 	if (Part->Retain_Layout_Version)
 		printf("Retain_Layout_Version ");
+	if (Part->Mount_To_Decrypt)
+		printf("Mount_To_Decrypt ");
+	if (Part->Can_Flash_Img)
+		printf("Can_Flash_Img ");
 	printf("\n");
 	if (!Part->SubPartition_Of.empty())
 		printf("   SubPartition_Of: %s\n", Part->SubPartition_Of.c_str());
@@ -254,6 +283,8 @@ void TWPartitionManager::Output_Partition(TWPartition* Part) {
 		printf("   Alternate_Block_Device: %s\n", Part->Alternate_Block_Device.c_str());
 	if (!Part->Decrypted_Block_Device.empty())
 		printf("   Decrypted_Block_Device: %s\n", Part->Decrypted_Block_Device.c_str());
+	if (!Part->Crypto_Key_Location.empty() && Part->Crypto_Key_Location != "footer")
+		printf("   Crypto_Key_Location: %s\n", Part->Crypto_Key_Location.c_str());
 	if (Part->Length != 0)
 		printf("   Length: %i\n", Part->Length);
 	if (!Part->Display_Name.empty())
@@ -282,6 +313,8 @@ void TWPartitionManager::Output_Partition(TWPartition* Part) {
 	printf("   Backup_Method: %s\n", back_meth.c_str());
 	if (Part->Mount_Flags || !Part->Mount_Options.empty())
 		printf("   Mount_Flags=0x%8x, Mount_Options=%s\n", Part->Mount_Flags, Part->Mount_Options.c_str());
+	if (Part->MTP_Storage_ID)
+		printf("   MTP_Storage_ID: %i\n", Part->MTP_Storage_ID);
 	printf("\n");
 }
 
@@ -739,6 +772,7 @@ int TWPartitionManager::Run_Backup(void) {
 	gui_print_color("highlight", "[BACKUP COMPLETED IN %d SECONDS]\n\n", total_time); // the end
 	string backup_log = Full_Backup_Path + "recovery.log";
 	TWFunc::copy_file("/tmp/recovery.log", backup_log, 0644);
+	tw_set_default_metadata(backup_log.c_str());
 	return true;
 }
 
@@ -1126,13 +1160,10 @@ int TWPartitionManager::Wipe_Media_From_Data(void) {
 			return false;
 
 		gui_print("Wiping internal storage -- /data/media...\n");
-		mtp_was_enabled = TWFunc::Toggle_MTP(false);
+		Remove_MTP_Storage(dat->MTP_Storage_ID);
 		TWFunc::removeDir("/data/media", false);
 		if (mkdir("/data/media", S_IRWXU | S_IRWXG | S_IWGRP | S_IXGRP) != 0) {
-			if (mtp_was_enabled) {
-				if (!Enable_MTP())
-					Disable_MTP();
-			}
+			Add_MTP_Storage(dat->MTP_Storage_ID);
 			return false;
 		}
 		if (dat->Has_Data_Media) {
@@ -1141,10 +1172,7 @@ int TWPartitionManager::Wipe_Media_From_Data(void) {
 			dat->UnMount(false);
 			dat->Mount(false);
 		}
-		if (mtp_was_enabled) {
-			if (!Enable_MTP())
-				Disable_MTP();
-		}
+		Add_MTP_Storage(dat->MTP_Storage_ID);
 		return true;
 	} else {
 		LOGERR("Unable to locate /data.\n");
@@ -1332,56 +1360,31 @@ int TWPartitionManager::Decrypt_Device(string Password) {
 	int ret_val, password_len;
 	char crypto_blkdev[255], cPassword[255];
 	size_t result;
+	std::vector<TWPartition*>::iterator iter;
 
 	property_set("ro.crypto.state", "encrypted");
-#ifdef TW_INCLUDE_JB_CRYPTO
-	// No extra flags needed
-#else
-	property_set("ro.crypto.fs_type", CRYPTO_FS_TYPE);
-	property_set("ro.crypto.fs_real_blkdev", CRYPTO_REAL_BLKDEV);
-	property_set("ro.crypto.fs_mnt_point", CRYPTO_MNT_POINT);
-	property_set("ro.crypto.fs_options", CRYPTO_FS_OPTIONS);
-	property_set("ro.crypto.fs_flags", CRYPTO_FS_FLAGS);
-	property_set("ro.crypto.keyfile.userdata", CRYPTO_KEY_LOC);
 
-#ifdef CRYPTO_SD_FS_TYPE
-	property_set("ro.crypto.sd_fs_type", CRYPTO_SD_FS_TYPE);
-	property_set("ro.crypto.sd_fs_real_blkdev", CRYPTO_SD_REAL_BLKDEV);
-	property_set("ro.crypto.sd_fs_mnt_point", EXPAND(TW_INTERNAL_STORAGE_PATH));
-#endif
-
-	property_set("rw.km_fips_status", "ready");
-
-#endif
-
-	// some samsung devices store "footer" on efs partition
-	TWPartition *efs = Find_Partition_By_Path("/efs");
-	if(efs && !efs->Is_Mounted())
-		efs->Mount(false);
-	else
-		efs = 0;
-#ifdef TW_EXTERNAL_STORAGE_PATH
-#ifdef TW_INCLUDE_CRYPTO_SAMSUNG
-	TWPartition* sdcard = Find_Partition_By_Path(EXPAND(TW_EXTERNAL_STORAGE_PATH));
-	if (sdcard && sdcard->Mount(false)) {
-		property_set("ro.crypto.external_encrypted", "1");
-		property_set("ro.crypto.external_blkdev", sdcard->Actual_Block_Device.c_str());
-	} else {
-		property_set("ro.crypto.external_encrypted", "0");
+	// Mount any partitions that need to be mounted for decrypt
+	for (iter = Partitions.begin(); iter != Partitions.end(); iter++) {
+		if ((*iter)->Mount_To_Decrypt) {
+			(*iter)->Mount(true);
+		}
 	}
-#endif
-#endif
 
 	strcpy(cPassword, Password.c_str());
 	int pwret = cryptfs_check_passwd(cPassword);
+
+	// Unmount any partitions that were needed for decrypt
+	for (iter = Partitions.begin(); iter != Partitions.end(); iter++) {
+		if ((*iter)->Mount_To_Decrypt) {
+			(*iter)->UnMount(false);
+		}
+	}
 
 	if (pwret != 0) {
 		LOGERR("Failed to decrypt data.\n");
 		return -1;
 	}
-
-	if(efs)
-		efs->UnMount(false);
 
 	property_get("ro.crypto.fs_crypto_blkdev", crypto_blkdev, "error");
 	if (strcmp(crypto_blkdev, "error") == 0) {
@@ -1397,47 +1400,13 @@ int TWPartitionManager::Decrypt_Device(string Password) {
 			dat->Current_File_System = dat->Fstab_File_System; // Needed if we're ignoring blkid because encrypted devices start out as emmc
 			gui_print("Data successfully decrypted, new block device: '%s'\n", crypto_blkdev);
 
-#ifdef CRYPTO_SD_FS_TYPE
-			char crypto_blkdev_sd[255];
-			property_get("ro.crypto.sd_fs_crypto_blkdev", crypto_blkdev_sd, "error");
-			if (strcmp(crypto_blkdev_sd, "error") == 0) {
-				LOGERR("Error retrieving decrypted data block device.\n");
-			} else if(TWPartition* emmc = Find_Partition_By_Path(EXPAND(TW_INTERNAL_STORAGE_PATH))){
-				emmc->Is_Decrypted = true;
-				emmc->Decrypted_Block_Device = crypto_blkdev_sd;
-				emmc->Setup_File_System(false);
-				gui_print("Internal SD successfully decrypted, new block device: '%s'\n", crypto_blkdev_sd);
-			}
-#endif //ifdef CRYPTO_SD_FS_TYPE
-#ifdef TW_EXTERNAL_STORAGE_PATH
-#ifdef TW_INCLUDE_CRYPTO_SAMSUNG
-			char is_external_decrypted[255];
-			property_get("ro.crypto.external_use_ecryptfs", is_external_decrypted, "0");
-			if (strcmp(is_external_decrypted, "1") == 0) {
-				sdcard->Is_Decrypted = true;
-				sdcard->EcryptFS_Password = Password;
-				sdcard->Decrypted_Block_Device = sdcard->Actual_Block_Device;
-				string MetaEcfsFile = EXPAND(TW_EXTERNAL_STORAGE_PATH);
-				MetaEcfsFile += "/.MetaEcfsFile";
-				if (!TWFunc::Path_Exists(MetaEcfsFile)) {
-					// External storage isn't actually encrypted so unmount and remount without ecryptfs
-					sdcard->UnMount(false);
-					sdcard->Mount(false);
-				}
-			} else {
-				LOGINFO("External storage '%s' is not encrypted.\n", sdcard->Mount_Point.c_str());
-				sdcard->Is_Decrypted = false;
-				sdcard->Decrypted_Block_Device = "";
-			}
-#endif
-#endif //ifdef TW_EXTERNAL_STORAGE_PATH
-
 			// Sleep for a bit so that the device will be ready
 			sleep(1);
 			if (dat->Has_Data_Media && dat->Mount(false) && TWFunc::Path_Exists("/data/media/0")) {
 				dat->Storage_Path = "/data/media/0";
 				dat->Symlink_Path = dat->Storage_Path;
 				DataManager::SetValue("tw_storage_path", "/data/media/0");
+				DataManager::SetValue("tw_settings_path", "/data/media/0");
 				dat->UnMount(false);
 				Output_Partition(dat);
 			}
@@ -1466,6 +1435,10 @@ int TWPartitionManager::Fix_Permissions(void) {
 
 	fixPermissions perms;
 	result = perms.fixPerms(true, false);
+#ifdef HAVE_SELINUX
+	if (result == 0 && DataManager::GetIntValue("tw_fixperms_restorecon") == 1)
+		result = perms.fixContexts();
+#endif
 	UnMount_Main_Partitions();
 	gui_print("Done.\n\n");
 	return result;
@@ -1516,8 +1489,6 @@ int TWPartitionManager::usb_storage_enable(void) {
 	char lun_file[255];
 	bool has_multiple_lun = false;
 
-	property_set("sys.storage.ums_enabled", "1");
-	sleep(1);
 	DataManager::GetValue(TW_HAS_DATA_MEDIA, has_data_media);
 	string Lun_File_str = CUSTOM_LUN_FILE;
 	size_t found = Lun_File_str.find("%");
@@ -1526,7 +1497,7 @@ int TWPartitionManager::usb_storage_enable(void) {
 		if (TWFunc::Path_Exists(lun_file))
 			has_multiple_lun = true;
 	}
-	mtp_was_enabled = TWFunc::Toggle_MTP(false);
+	mtp_was_enabled = TWFunc::Toggle_MTP(false); // Must disable MTP for USB Storage
 	if (!has_multiple_lun) {
 		LOGINFO("Device doesn't have multiple lun files, mount current storage\n");
 		sprintf(lun_file, CUSTOM_LUN_FILE, 0);
@@ -1563,12 +1534,12 @@ int TWPartitionManager::usb_storage_enable(void) {
 			goto error_handle;
 		}
 	}
+	property_set("sys.storage.ums_enabled", "1");
 	return true;
 error_handle:
 	if (mtp_was_enabled)
 		if (!Enable_MTP())
 			Disable_MTP();
-	property_set("sys.storage.ums_enabled", "0");
 	return false;
 }
 
@@ -1879,6 +1850,16 @@ void TWPartitionManager::Get_Partition_List(string ListType, std::vector<Partiti
 				Partition_List->push_back(datamedia);
 			}
 		}
+	} else if (ListType == "flashimg") {
+		for (iter = Partitions.begin(); iter != Partitions.end(); iter++) {
+			if ((*iter)->Can_Flash_Img && (*iter)->Is_Present) {
+				struct PartitionList part;
+				part.Display_Name = (*iter)->Backup_Display_Name;
+				part.Mount_Point = (*iter)->Backup_Path;
+				part.selected = 0;
+				Partition_List->push_back(part);
+			}
+		}
 	} else {
 		LOGERR("Unknown list type '%s' requested for TWPartitionManager::Get_Partition_List\n", ListType.c_str());
 	}
@@ -1934,40 +1915,57 @@ bool TWPartitionManager::Enable_MTP(void) {
 	}
 	//Launch MTP Responder
 	LOGINFO("Starting MTP\n");
-	char vendor[PROPERTY_VALUE_MAX];
-	char product[PROPERTY_VALUE_MAX];
 	int count = 0;
-	property_set("sys.usb.config", "none");
-	property_get("usb.vendor", vendor, "18D1");
-	property_get("usb.product.mtpadb", product, "4EE2");
-	string vendorstr = vendor;
-	string productstr = product;
-	TWFunc::write_file("/sys/class/android_usb/android0/idVendor", vendorstr);
-	TWFunc::write_file("/sys/class/android_usb/android0/idProduct", productstr);
-	property_set("sys.usb.config", "mtp,adb");
+
+	int mtppipe[2];
+
+	if (pipe(mtppipe) < 0) {
+		LOGERR("Error creating MTP pipe\n");
+		return false;
+	}
+
+	char old_value[PROPERTY_VALUE_MAX];
+	property_get("sys.usb.config", old_value, "error");
+	if (strcmp(old_value, "error") != 0 && strcmp(old_value, "mtp,adb") != 0) {
+		char vendor[PROPERTY_VALUE_MAX];
+		char product[PROPERTY_VALUE_MAX];
+		property_set("sys.usb.config", "none");
+		property_get("usb.vendor", vendor, "18D1");
+		property_get("usb.product.mtpadb", product, "4EE2");
+		string vendorstr = vendor;
+		string productstr = product;
+		TWFunc::write_file("/sys/class/android_usb/android0/idVendor", vendorstr);
+		TWFunc::write_file("/sys/class/android_usb/android0/idProduct", productstr);
+		property_set("sys.usb.config", "mtp,adb");
+	}
 	std::vector<TWPartition*>::iterator iter;
 	/* To enable MTP debug, use the twrp command line feature to
 	 * twrp set tw_mtp_debug 1
 	 */
 	twrpMtp *mtp = new twrpMtp(DataManager::GetIntValue("tw_mtp_debug"));
-	unsigned int storageid = 1 << 16;	// upper 16 bits are for physical storage device, we pretend to have only one
 	for (iter = Partitions.begin(); iter != Partitions.end(); iter++) {
 		if ((*iter)->Is_Storage && (*iter)->Is_Present && (*iter)->Mount(false)) {
-			++storageid;
-			printf("twrp addStorage %s, mtpstorageid: %u\n", (*iter)->Storage_Path.c_str(), storageid);
-			mtp->addStorage((*iter)->Storage_Name, (*iter)->Storage_Path, storageid);
+			printf("twrp addStorage %s, mtpstorageid: %u, maxFileSize: %lld\n", (*iter)->Storage_Path.c_str(), (*iter)->MTP_Storage_ID, (*iter)->Get_Max_FileSize());
+			mtp->addStorage((*iter)->Storage_Name, (*iter)->Storage_Path, (*iter)->MTP_Storage_ID, (*iter)->Get_Max_FileSize());
 			count++;
 		}
 	}
 	if (count) {
-		mtppid = mtp->forkserver();
+		mtppid = mtp->forkserver(mtppipe);
 		if (mtppid) {
+			close(mtppipe[0]); // Host closes read side
+			mtp_write_fd = mtppipe[1];
 			DataManager::SetValue("tw_mtp_enabled", 1);
 			return true;
 		} else {
+			close(mtppipe[0]);
+			close(mtppipe[1]);
 			LOGERR("Failed to enable MTP\n");
 			return false;
 		}
+	} else {
+		close(mtppipe[0]);
+		close(mtppipe[1]);
 	}
 	LOGERR("No valid storage partitions found for MTP.\n");
 #else
@@ -1978,16 +1976,21 @@ bool TWPartitionManager::Enable_MTP(void) {
 }
 
 bool TWPartitionManager::Disable_MTP(void) {
+	char old_value[PROPERTY_VALUE_MAX];
+	property_get("sys.usb.config", old_value, "error");
+	if (strcmp(old_value, "adb") != 0) {
+		char vendor[PROPERTY_VALUE_MAX];
+		char product[PROPERTY_VALUE_MAX];
+		property_set("sys.usb.config", "none");
+		property_get("usb.vendor", vendor, "18D1");
+		property_get("usb.product.adb", product, "D002");
+		string vendorstr = vendor;
+		string productstr = product;
+		TWFunc::write_file("/sys/class/android_usb/android0/idVendor", vendorstr);
+		TWFunc::write_file("/sys/class/android_usb/android0/idProduct", productstr);
+		usleep(2000);
+	}
 #ifdef TW_HAS_MTP
-	char vendor[PROPERTY_VALUE_MAX];
-	char product[PROPERTY_VALUE_MAX];
-	property_set("sys.usb.config", "none");
-	property_get("usb.vendor", vendor, "18D1");
-	property_get("usb.product.adb", product, "D002");
-	string vendorstr = vendor;
-	string productstr = product;
-	TWFunc::write_file("/sys/class/android_usb/android0/idVendor", vendorstr);
-	TWFunc::write_file("/sys/class/android_usb/android0/idProduct", productstr);
 	if (mtppid) {
 		LOGINFO("Disabling MTP\n");
 		int status;
@@ -1995,13 +1998,179 @@ bool TWPartitionManager::Disable_MTP(void) {
 		mtppid = 0;
 		// We don't care about the exit value, but this prevents a zombie process
 		waitpid(mtppid, &status, 0);
+		close(mtp_write_fd);
+		mtp_write_fd = -1;
 	}
+#endif
 	property_set("sys.usb.config", "adb");
+#ifdef TW_HAS_MTP
 	DataManager::SetValue("tw_mtp_enabled", 0);
+	return true;
+#endif
+	return false;
+}
+
+TWPartition* TWPartitionManager::Find_Partition_By_MTP_Storage_ID(unsigned int Storage_ID) {
+	std::vector<TWPartition*>::iterator iter;
+
+	for (iter = Partitions.begin(); iter != Partitions.end(); iter++) {
+		if ((*iter)->MTP_Storage_ID == Storage_ID)
+			return (*iter);
+	}
+	return NULL;
+}
+
+bool TWPartitionManager::Add_Remove_MTP_Storage(TWPartition* Part, int message_type) {
+#ifdef TW_HAS_MTP
+	struct mtpmsg mtp_message;
+
+	if (!mtppid)
+		return false; // MTP is disabled
+
+	if (mtp_write_fd < 0) {
+		LOGINFO("MTP: mtp_write_fd is not set\n");
+		return false;
+	}
+
+	if (Part) {
+		if (Part->MTP_Storage_ID == 0)
+			return false;
+		if (message_type == MTP_MESSAGE_REMOVE_STORAGE) {
+			mtp_message.message_type = MTP_MESSAGE_REMOVE_STORAGE; // Remove
+			LOGINFO("sending message to remove %i\n", Part->MTP_Storage_ID);
+			mtp_message.storage_id = Part->MTP_Storage_ID;
+			if (write(mtp_write_fd, &mtp_message, sizeof(mtp_message)) <= 0) {
+				LOGINFO("error sending message to remove storage %i\n", Part->MTP_Storage_ID);
+				return false;
+			} else {
+				LOGINFO("Message sent, remove storage ID: %i\n", Part->MTP_Storage_ID);
+				return true;
+			}
+		} else if (message_type == MTP_MESSAGE_ADD_STORAGE && Part->Is_Mounted()) {
+			mtp_message.message_type = MTP_MESSAGE_ADD_STORAGE; // Add
+			mtp_message.storage_id = Part->MTP_Storage_ID;
+			mtp_message.path = Part->Storage_Path.c_str();
+			mtp_message.display = Part->Storage_Name.c_str();
+			mtp_message.maxFileSize = Part->Get_Max_FileSize();
+			LOGINFO("sending message to add %i '%s'\n", Part->MTP_Storage_ID, mtp_message.path);
+			if (write(mtp_write_fd, &mtp_message, sizeof(mtp_message)) <= 0) {
+				LOGINFO("error sending message to add storage %i\n", Part->MTP_Storage_ID);
+				return false;
+			} else {
+				LOGINFO("Message sent, add storage ID: %i\n", Part->MTP_Storage_ID);
+				return true;
+			}
+		} else {
+			LOGERR("Unknown MTP message type: %i\n", message_type);
+		}
+	} else {
+		// This hopefully never happens as the error handling should
+		// occur in the calling function.
+		LOGINFO("TWPartitionManager::Add_Remove_MTP_Storage NULL partition given\n");
+	}
 	return true;
 #else
 	LOGERR("MTP support not included\n");
 	DataManager::SetValue("tw_mtp_enabled", 0);
 	return false;
 #endif
+}
+
+bool TWPartitionManager::Add_MTP_Storage(string Mount_Point) {
+#ifdef TW_HAS_MTP
+	TWPartition* Part = PartitionManager.Find_Partition_By_Path(Mount_Point);
+	if (Part) {
+		return PartitionManager.Add_Remove_MTP_Storage(Part, MTP_MESSAGE_ADD_STORAGE);
+	} else {
+		LOGINFO("TWFunc::Add_MTP_Storage unable to locate partition for '%s'\n", Mount_Point.c_str());
+	}
+#endif
+	return false;
+}
+
+bool TWPartitionManager::Add_MTP_Storage(unsigned int Storage_ID) {
+#ifdef TW_HAS_MTP
+	TWPartition* Part = PartitionManager.Find_Partition_By_MTP_Storage_ID(Storage_ID);
+	if (Part) {
+		return PartitionManager.Add_Remove_MTP_Storage(Part, MTP_MESSAGE_ADD_STORAGE);
+	} else {
+		LOGINFO("TWFunc::Add_MTP_Storage unable to locate partition for %i\n", Storage_ID);
+	}
+#endif
+	return false;
+}
+
+bool TWPartitionManager::Remove_MTP_Storage(string Mount_Point) {
+#ifdef TW_HAS_MTP
+	TWPartition* Part = PartitionManager.Find_Partition_By_Path(Mount_Point);
+	if (Part) {
+		return PartitionManager.Add_Remove_MTP_Storage(Part, MTP_MESSAGE_REMOVE_STORAGE);
+	} else {
+		LOGINFO("TWFunc::Remove_MTP_Storage unable to locate partition for '%s'\n", Mount_Point.c_str());
+	}
+#endif
+	return false;
+}
+
+bool TWPartitionManager::Remove_MTP_Storage(unsigned int Storage_ID) {
+#ifdef TW_HAS_MTP
+	TWPartition* Part = PartitionManager.Find_Partition_By_MTP_Storage_ID(Storage_ID);
+	if (Part) {
+		return PartitionManager.Add_Remove_MTP_Storage(Part, MTP_MESSAGE_REMOVE_STORAGE);
+	} else {
+		LOGINFO("TWFunc::Remove_MTP_Storage unable to locate partition for %i\n", Storage_ID);
+	}
+#endif
+	return false;
+}
+
+bool TWPartitionManager::Flash_Image(string Filename) {
+	int check, partition_count = 0;
+	TWPartition* flash_part = NULL;
+	string Flash_List, flash_path;
+	size_t start_pos = 0, end_pos = 0;
+
+	gui_print("\n[IMAGE FLASH STARTED]\n\n");
+	gui_print("Image to flash: '%s'\n", Filename.c_str());
+
+	if (!Mount_Current_Storage(true))
+		return false;
+
+	gui_print("Calculating restore details...\n");
+	DataManager::GetValue("tw_flash_partition", Flash_List);
+	if (!Flash_List.empty()) {
+		end_pos = Flash_List.find(";", start_pos);
+		while (end_pos != string::npos && start_pos < Flash_List.size()) {
+			flash_path = Flash_List.substr(start_pos, end_pos - start_pos);
+			flash_part = Find_Partition_By_Path(flash_path);
+			if (flash_part != NULL) {
+				partition_count++;
+				if (partition_count > 1) {
+					LOGERR("Too many partitions selected for flashing.\n");
+					return false;
+				}
+			} else {
+				LOGERR("Unable to locate '%s' partition for flashing (flash list).\n", flash_path.c_str());
+				return false;
+			}
+			start_pos = end_pos + 1;
+			end_pos = Flash_List.find(";", start_pos);
+		}
+	}
+
+	if (partition_count == 0) {
+		LOGERR("No partitions selected for flashing.\n");
+		return false;
+	}
+
+	DataManager::SetProgress(0.0);
+	if (flash_part) {
+		if (!flash_part->Flash_Image(Filename))
+			return false;
+	} else {
+		LOGERR("Invalid flash partition specified.\n");
+		return false;
+	}
+	gui_print_color("highlight", "[IMAGE FLASH COMPLETED]\n\n");
+	return true;
 }

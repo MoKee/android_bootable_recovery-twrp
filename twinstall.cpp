@@ -31,15 +31,10 @@
 #include "mincrypt/rsa.h"
 #include "mincrypt/sha.h"
 #include "minui/minui.h"
-#ifdef HAVE_SELINUX
-#include "minzip/SysUtil.h"
-#include "minzip/Zip.h"
-#else
-#include "minzipold/SysUtil.h"
-#include "minzipold/Zip.h"
-#endif
 #include "mtdutils/mounts.h"
 #include "mtdutils/mtdutils.h"
+#include "minzip/SysUtil.h"
+#include "minzip/Zip.h"
 #include "verifier.h"
 #include "variables.h"
 #include "data.hpp"
@@ -291,6 +286,8 @@ extern "C" int TWinstall_zip(const char* path, int* wipe_cache) {
 			LOGERR("Zip signature verification failed: %i\n", ret_val);
 			sysReleaseMap(&map);
 			return -1;
+		} else {
+			gui_print("Zip signature verified successfully.\n");
 		}
 	}
 	ret_val = mzOpenZipArchive(map.addr, map.length, &Zip);

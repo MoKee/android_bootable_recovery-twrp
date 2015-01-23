@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <iostream>
 #include <utils/threads.h>
 #include "btree.hpp"
 #include "MtpDebug.h"
@@ -28,6 +27,7 @@ Tree::Tree(MtpObjectHandle handle, MtpObjectHandle parent, const std::string& na
 Tree::~Tree() {
 	for (std::map<MtpObjectHandle, Node*>::iterator it = entries.begin(); it != entries.end(); ++it)
 		delete it->second;
+	entries.clear();
 }
 
 int Tree::getCount(void) {
@@ -59,7 +59,7 @@ Node* Tree::findEntryByName(std::string name) {
 }
 
 Node* Tree::findNode(MtpObjectHandle handle) {
-	std::map<MtpObjectHandle, Node*>::iterator it = entries.find(handle);	
+	std::map<MtpObjectHandle, Node*>::iterator it = entries.find(handle);
 	if (it != entries.end())
 		return it->second;
 	return NULL;
@@ -71,7 +71,7 @@ void Tree::getmtpids(MtpObjectHandleList* mtpids) {
 }
 
 void Tree::deleteNode(MtpObjectHandle handle) {
-	std::map<MtpObjectHandle, Node*>::iterator it = entries.find(handle);	
+	std::map<MtpObjectHandle, Node*>::iterator it = entries.find(handle);
 	if (it != entries.end()) {
 		delete it->second;
 		entries.erase(it);

@@ -3,6 +3,8 @@
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
+LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
+
 LOCAL_SRC_FILES:= \
     scrypt_test.cpp
 
@@ -18,6 +20,7 @@ LOCAL_STATIC_LIBRARIES := \
     libgtest \
     libgtest_main
 
-LOCAL_MODULE := scrypt_test_twrp
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE := scrypttwrp_test
 
 include $(BUILD_NATIVE_TEST)

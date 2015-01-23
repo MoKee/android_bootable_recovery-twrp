@@ -34,8 +34,9 @@ LOCAL_SRC_FILES := \
     twrp.cpp \
     fixPermissions.cpp \
     twrpTar.cpp \
-	twrpDU.cpp \
+    twrpDU.cpp \
     twrpDigest.cpp \
+    digest/md5.c \
     find_file.cpp \
     infomanager.cpp
 
@@ -84,14 +85,14 @@ LOCAL_CFLAGS += -Wno-unused-parameter
 #    libm \
 #    libc
 
-LOCAL_C_INCLUDES += bionic external/stlport/stlport
+LOCAL_C_INCLUDES += bionic external/stlport/stlport external/openssl/include $(LOCAL_PATH)/libmincrypt/includes
 
 LOCAL_STATIC_LIBRARIES :=
 LOCAL_SHARED_LIBRARIES :=
 
-LOCAL_STATIC_LIBRARIES += libcrecovery libguitwrp
+LOCAL_STATIC_LIBRARIES += libguitwrp
 LOCAL_SHARED_LIBRARIES += libz libc libstlport libcutils libstdc++ libtar libblkid libminuitwrp libminadbd libmtdutils libminzip libaosprecovery
-LOCAL_SHARED_LIBRARIES += libgccdemangle
+LOCAL_SHARED_LIBRARIES += libgccdemangle libcrecovery
 
 ifneq ($(wildcard system/core/libsparse/Android.mk),)
 LOCAL_SHARED_LIBRARIES += libsparse
@@ -252,34 +253,15 @@ endif
 ifeq ($(TW_NO_EXFAT_FUSE), true)
     LOCAL_CFLAGS += -DTW_NO_EXFAT_FUSE
 endif
+ifeq ($(TW_INCLUDE_JB_CRYPTO), true)
+    TW_INCLUDE_CRYPTO := true
+endif
+ifeq ($(TW_INCLUDE_L_CRYPTO), true)
+    TW_INCLUDE_CRYPTO := true
+endif
 ifeq ($(TW_INCLUDE_CRYPTO), true)
     LOCAL_CFLAGS += -DTW_INCLUDE_CRYPTO
-    LOCAL_CFLAGS += -DCRYPTO_FS_TYPE=\"$(TW_CRYPTO_FS_TYPE)\"
-    LOCAL_CFLAGS += -DCRYPTO_REAL_BLKDEV=\"$(TW_CRYPTO_REAL_BLKDEV)\"
-    LOCAL_CFLAGS += -DCRYPTO_MNT_POINT=\"$(TW_CRYPTO_MNT_POINT)\"
-    LOCAL_CFLAGS += -DCRYPTO_FS_OPTIONS=\"$(TW_CRYPTO_FS_OPTIONS)\"
-    LOCAL_CFLAGS += -DCRYPTO_FS_FLAGS=\"$(TW_CRYPTO_FS_FLAGS)\"
-    LOCAL_CFLAGS += -DCRYPTO_KEY_LOC=\"$(TW_CRYPTO_KEY_LOC)\"
-ifeq ($(TW_INCLUDE_CRYPTO_SAMSUNG), true)
-    LOCAL_CFLAGS += -DTW_INCLUDE_CRYPTO_SAMSUNG=\"$(TW_INCLUDE_CRYPTO_SAMSUNG)\"
-    ifdef TW_CRYPTO_SD_REAL_BLKDEV
-        LOCAL_CFLAGS += -DCRYPTO_SD_REAL_BLKDEV=\"$(TW_CRYPTO_SD_REAL_BLKDEV)\"
-        LOCAL_CFLAGS += -DCRYPTO_SD_FS_TYPE=\"$(TW_CRYPTO_SD_FS_TYPE)\"
-    endif
-    #LOCAL_LDFLAGS += -L$(TARGET_OUT_SHARED_LIBRARIES) -lsec_km
-    LOCAL_LDFLAGS += -ldl
-    LOCAL_STATIC_LIBRARIES += libcrypt_samsung
-endif
-    LOCAL_SHARED_LIBRARIES += libcryptfsics
-    #LOCAL_SRC_FILES += crypto/ics/cryptfs.c
-    #LOCAL_C_INCLUDES += system/extras/ext4_utils external/openssl/include
-endif
-ifeq ($(TW_INCLUDE_JB_CRYPTO), true)
-    LOCAL_CFLAGS += -DTW_INCLUDE_CRYPTO
-    LOCAL_CFLAGS += -DTW_INCLUDE_JB_CRYPTO
-    LOCAL_SHARED_LIBRARIES += libcryptfsjb
-    #LOCAL_SRC_FILES += crypto/jb/cryptfs.c
-    #LOCAL_C_INCLUDES += system/extras/ext4_utils external/openssl/include
+    LOCAL_SHARED_LIBRARIES += libcryptfslollipop
 endif
 ifeq ($(TW_USE_MODEL_HARDWARE_ID_FOR_DEVICE_ID), true)
     LOCAL_CFLAGS += -DTW_USE_MODEL_HARDWARE_ID_FOR_DEVICE_ID
@@ -321,27 +303,33 @@ ifneq ($(wildcard bionic/libc/include/sys/capability.h),)
     LOCAL_CFLAGS += -DHAVE_CAPABILITIES
 endif
 
-LOCAL_LDFLAGS += -Wl,-dynamic-linker,/sbin/linker
-
 LOCAL_ADDITIONAL_DEPENDENCIES := \
-    busybox_symlinks \
-    dosfsck \
-    dosfslabel \
     dump_image \
     erase_image \
     flash_image \
     fix_permissions.sh \
-    fsck_msdos_symlink \
-    mkdosfs \
     mke2fs.conf \
-    mkexfatfs \
     pigz \
     teamwin \
     toolbox_symlinks \
     twrp \
     unpigz_symlink \
-    updater
+    dosfsck \
+    dosfslabel \
+    fsck_msdos_symlink \
+    mkdosfs
 
+ifneq ($(TARGET_ARCH), arm64)
+    LOCAL_LDFLAGS += -Wl,-dynamic-linker,/sbin/linker
+else
+    LOCAL_LDFLAGS += -Wl,-dynamic-linker,/sbin/linker64
+endif
+ifneq ($(TW_USE_TOOLBOX), true)
+    LOCAL_ADDITIONAL_DEPENDENCIES += busybox_symlinks
+endif
+ifneq ($(TW_NO_EXFAT), true)
+    LOCAL_ADDITIONAL_DEPENDENCIES += mkexfatfs
+endif
 ifeq ($(BOARD_HAS_NO_REAL_SDCARD),)
     LOCAL_ADDITIONAL_DEPENDENCIES += parted
 endif
@@ -359,12 +347,6 @@ ifneq ($(TW_EXCLUDE_SUPERSU), true)
 endif
 ifneq ($(TW_NO_EXFAT_FUSE), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += exfat-fuse
-endif
-ifeq ($(TW_INCLUDE_CRYPTO), true)
-    LOCAL_ADDITIONAL_DEPENDENCIES += cryptfs cryptsettings
-endif
-ifeq ($(TW_INCLUDE_JB_CRYPTO), true)
-    LOCAL_ADDITIONAL_DEPENDENCIES += getfooter
 endif
 ifeq ($(TW_INCLUDE_FB2PNG), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += fb2png
@@ -412,6 +394,9 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := busybox_symlinks
 LOCAL_MODULE_TAGS := optional
 LOCAL_ADDITIONAL_DEPENDENCIES := $(RECOVERY_BUSYBOX_SYMLINKS)
+ifneq (,$(filter $(PLATFORM_SDK_VERSION),16 17 18))
+ALL_DEFAULT_INSTALLED_MODULES += $(RECOVERY_BUSYBOX_SYMLINKS)
+endif
 include $(BUILD_PHONY_PACKAGE)
 RECOVERY_BUSYBOX_SYMLINKS :=
 endif # !TW_USE_TOOLBOX
@@ -429,11 +414,10 @@ LOCAL_SRC_FILES := fuse_sideload.c
 
 LOCAL_CFLAGS := -O2 -g -DADB_HOST=0 -Wall -Wno-unused-parameter
 LOCAL_CFLAGS += -D_XOPEN_SOURCE -D_GNU_SOURCE
-
+LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libfusesideload
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/libmincrypt/includes
-LOCAL_SHARED_LIBRARIES := libcutils libc
-LOCAL_STATIC_LIBRARIES := libmincrypttwrp
+LOCAL_SHARED_LIBRARIES := libcutils libc libmincrypttwrp
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -465,9 +449,8 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libaosprecovery
 LOCAL_MODULE_TAGS := eng optional
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/libmincrypt/includes
-LOCAL_SRC_FILES = adb_install.cpp asn1_decoder.cpp bootloader.cpp verifier.cpp mtdutils/mtdutils.c legacy_property_service.c
-LOCAL_SHARED_LIBRARIES += libc liblog libcutils libmtdutils libfusesideload
-LOCAL_STATIC_LIBRARIES += libmincrypttwrp
+LOCAL_SRC_FILES := adb_install.cpp asn1_decoder.cpp bootloader.cpp legacy_property_service.c verifier.cpp set_metadata.c
+LOCAL_SHARED_LIBRARIES += libc liblog libcutils libmtdutils libfusesideload libmincrypttwrp libselinux
 
 ifneq ($(BOARD_RECOVERY_BLDRMSG_OFFSET),)
     LOCAL_CFLAGS += -DBOARD_RECOVERY_BLDRMSG_OFFSET=$(BOARD_RECOVERY_BLDRMSG_OFFSET)
@@ -495,10 +478,7 @@ include $(commands_recovery_local_path)/injecttwrp/Android.mk \
     $(commands_recovery_local_path)/mtdutils/Android.mk \
     $(commands_recovery_local_path)/flashutils/Android.mk \
     $(commands_recovery_local_path)/pigz/Android.mk \
-    $(commands_recovery_local_path)/dosfstools/Android.mk \
     $(commands_recovery_local_path)/libtar/Android.mk \
-    $(commands_recovery_local_path)/crypto/cryptsettings/Android.mk \
-    $(commands_recovery_local_path)/crypto/cryptfs/Android.mk \
     $(commands_recovery_local_path)/libcrecovery/Android.mk \
     $(commands_recovery_local_path)/libblkid/Android.mk \
     $(commands_recovery_local_path)/minuitwrp/Android.mk \
@@ -506,23 +486,13 @@ include $(commands_recovery_local_path)/injecttwrp/Android.mk \
     $(commands_recovery_local_path)/toolbox/Android.mk \
     $(commands_recovery_local_path)/libmincrypt/Android.mk \
     $(commands_recovery_local_path)/twrpTarMain/Android.mk \
-    $(commands_recovery_local_path)/mtp/Android.mk
+    $(commands_recovery_local_path)/mtp/Android.mk \
+    $(commands_recovery_local_path)/minzip/Android.mk \
+    $(commands_recovery_local_path)/dosfstools/Android.mk
 
-ifeq ($(TW_INCLUDE_CRYPTO_SAMSUNG), true)
-    include $(commands_recovery_local_path)/crypto/libcrypt_samsung/Android.mk
-endif
-
-ifeq ($(TW_INCLUDE_JB_CRYPTO), true)
-    include $(commands_recovery_local_path)/crypto/jb/Android.mk
-    include $(commands_recovery_local_path)/crypto/fs_mgr/Android.mk
-    include $(commands_recovery_local_path)/crypto/logwrapper/Android.mk
+ifeq ($(TW_INCLUDE_CRYPTO), true)
+    include $(commands_recovery_local_path)/crypto/lollipop/Android.mk
     include $(commands_recovery_local_path)/crypto/scrypt/Android.mk
-    include $(commands_recovery_local_path)/crypto/crypttools/Android.mk
-endif
-ifeq ($(TWHAVE_SELINUX), true)
-    include $(commands_recovery_local_path)/minzip/Android.mk
-else
-    include $(commands_recovery_local_path)/minzipold/Android.mk
 endif
 ifeq ($(BUILD_ID), GINGERBREAD)
     TW_NO_EXFAT := true
@@ -534,9 +504,6 @@ ifneq ($(TW_NO_EXFAT), true)
 endif
 ifneq ($(TW_NO_EXFAT_FUSE), true)
     include $(commands_recovery_local_path)/exfat/exfat-fuse/Android.mk
-endif
-ifeq ($(TW_INCLUDE_CRYPTO), true)
-    include $(commands_recovery_local_path)/crypto/ics/Android.mk
 endif
 ifneq ($(TW_OEM_BUILD),true)
     include $(commands_recovery_local_path)/orscmd/Android.mk
