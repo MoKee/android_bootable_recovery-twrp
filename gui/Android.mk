@@ -94,6 +94,7 @@ LOCAL_MODULE_CLASS := RECOVERY_EXECUTABLES
 LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/res
 TWRP_RES_LOC := $(commands_recovery_local_path)/gui/devices/common/res
 TWRP_COMMON_XML := $(hide) echo "No common TWRP XML resources"
+TWRP_TRANSLATE_XML := $(hide) echo "No comon TWRP ui XML resources"
 
 ifeq ($(TW_CUSTOM_THEME),)
 	PORTRAIT := 320x480 480x800 480x854 540x960 720x1280 800x1280 1080x1920 1200x1920 1440x2560 1600x2560
@@ -102,14 +103,18 @@ ifeq ($(TW_CUSTOM_THEME),)
 	TWRP_THEME_LOC := $(commands_recovery_local_path)/gui/devices/$(DEVICE_RESOLUTION)/res
 	ifneq ($(filter $(DEVICE_RESOLUTION), $(PORTRAIT)),)
 		TWRP_COMMON_XML := cp -fr $(commands_recovery_local_path)/gui/devices/portrait/res/* $(TARGET_RECOVERY_ROOT_OUT)/res/
+		TWRP_TRANSLATE_XML := $(TWRP_RES_LOC)/../../sed_t.sh $(TWRP_RES_LOC)/../../list.xml $(TARGET_RECOVERY_ROOT_OUT)/res/portrait.xml 
 	else ifneq ($(filter $(DEVICE_RESOLUTION), $(LANDSCAPE)),)
 		TWRP_COMMON_XML := cp -fr $(commands_recovery_local_path)/gui/devices/landscape/res/* $(TARGET_RECOVERY_ROOT_OUT)/res/
+		TWRP_TRANSLATE_XML := $(TWRP_RES_LOC)/../../sed_t.sh $(TWRP_RES_LOC)/../../list.xml $(TARGET_RECOVERY_ROOT_OUT)/res/landscape.xml
 	else ifneq ($(filter $(DEVICE_RESOLUTION), $(WATCH)),)
 		TWRP_COMMON_XML := cp -fr $(commands_recovery_local_path)/gui/devices/watch/res/* $(TARGET_RECOVERY_ROOT_OUT)/res/
+		TWRP_TRANSLATE_XML := $(TWRP_RES_LOC)/../../sed_t.sh $(TWRP_RES_LOC)/../../list.xml $(TARGET_RECOVERY_ROOT_OUT)/res/watch.xml
 	endif
 else
 	TWRP_THEME_LOC := $(TW_CUSTOM_THEME)
 endif
+
 
 ifeq ($(TW_DISABLE_TTF), true)
 	TWRP_REMOVE_FONT := rm -f $(TARGET_RECOVERY_ROOT_OUT)/res/fonts/*.ttf
@@ -132,8 +137,8 @@ $(TWRP_RES_GEN):
 	$(TWRP_REMOVE_FONT)
 	mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/sbin/
 	$(TWRP_RES_LOC)/../../sed_ui.xml.sh  $(TARGET_RECOVERY_ROOT_OUT)/res/ui.xml
-	$(TWRP_RES_LOC)/../../sed_t.sh $(TWRP_RES_LOC)/../../list.xml $(TARGET_RECOVERY_ROOT_OUT)/res/portrait.xml 
 	$(TWRP_RES_LOC)/../../sed_t.sh $(TWRP_RES_LOC)/../../list.xml $(TARGET_RECOVERY_ROOT_OUT)/res/ui.xml
+	$(TWRP_TRANSLATE_XML)
 
 
 ifneq ($(TW_USE_TOOLBOX), true)
