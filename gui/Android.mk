@@ -137,8 +137,9 @@ $(TWRP_RES_GEN):
 	$(TWRP_REMOVE_FONT)
 	mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/sbin/
 	$(TWRP_RES_LOC)/../../sed_ui.xml.sh  $(TARGET_RECOVERY_ROOT_OUT)/res/ui.xml
-	$(TWRP_RES_LOC)/../../sed_t.sh $(TWRP_RES_LOC)/../../list.xml $(TARGET_RECOVERY_ROOT_OUT)/res/ui.xml
 	$(TWRP_TRANSLATE_XML)
+	$(TWRP_RES_LOC)/../../sed_t.sh $(TWRP_RES_LOC)/../../list.xml $(TARGET_RECOVERY_ROOT_OUT)/res/ui.xml
+	
 
 
 ifneq ($(TW_USE_TOOLBOX), true)
