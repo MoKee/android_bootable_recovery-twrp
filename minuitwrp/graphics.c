@@ -351,20 +351,18 @@ void gr_flip(void)
         /* flip buffer 180 degrees for devices with physicaly inverted screens */
         unsigned int i;
         unsigned int j;
-        uint8_t tmp;
-        for (i = 0; i < ((vi.xres_virtual * vi.yres)/2); i++) {
-            for (j = 0; j < PIXEL_SIZE; j++) {
-                tmp = gr_mem_surface.data[i * PIXEL_SIZE + j];
-                gr_mem_surface.data[i * PIXEL_SIZE + j] = gr_mem_surface.data[(vi.xres_virtual * vi.yres * PIXEL_SIZE) - ((i+1) * PIXEL_SIZE) + j];
-                gr_mem_surface.data[(vi.xres_virtual * vi.yres * PIXEL_SIZE) - ((i+1) * PIXEL_SIZE) + j] = tmp;
+        for (i = 0; i < vi.yres; i++) {
+            for (j = 0; j < vi.xres; j++) {
+                memcpy(gr_framebuffer[gr_active_fb].data + (i * vi.xres_virtual + j) * PIXEL_SIZE,
+                       gr_mem_surface.data + ((vi.yres - i - 1) * vi.xres_virtual + vi.xres - j - 1) * PIXEL_SIZE, PIXEL_SIZE);
             }
         }
-#endif
-
+#else
         /* copy data from the in-memory surface to the buffer we're about
          * to make active. */
         memcpy(gr_framebuffer[gr_active_fb].data, gr_mem_surface.data,
                vi.xres_virtual * vi.yres * PIXEL_SIZE);
+#endif
 
         /* inform the display driver */
         set_active_framebuffer(gr_active_fb);
@@ -626,7 +624,7 @@ void* gr_loadFont(const char* fontName)
     {
         char tmp[128];
 
-        sprintf(tmp, "/res/fonts/%s.dat", fontName);
+        sprintf(tmp, TWRES "fonts/%s.dat", fontName);
         fd = open(tmp, O_RDONLY);
         if (fd == -1)
             return NULL;

@@ -28,6 +28,9 @@ ifeq ($(PROJECT_PATH_AGREES),true)
 
 include $(CLEAR_VARS)
 
+TWRES_PATH := "/twres/"
+TWHTCD_PATH := $(TWRES_PATH)htcd/
+
 TARGET_RECOVERY_GUI := true
 
 LOCAL_SRC_FILES := \
@@ -364,6 +367,8 @@ endif
 ifneq ($(TARGET_RECOVERY_DEVICE_MODULES),)
     LOCAL_ADDITIONAL_DEPENDENCIES += $(TARGET_RECOVERY_DEVICE_MODULES)
 endif
+LOCAL_CFLAGS += -DTWRES=\"$(TWRES_PATH)\"
+LOCAL_CFLAGS += -DTWHTCD_PATH=\"$(TWHTCD_PATH)\"
 
 include $(BUILD_EXECUTABLE)
 
@@ -449,7 +454,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libaosprecovery
 LOCAL_MODULE_TAGS := eng optional
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/libmincrypt/includes
-LOCAL_SRC_FILES := adb_install.cpp asn1_decoder.cpp bootloader.cpp legacy_property_service.c verifier.cpp set_metadata.c
+LOCAL_SRC_FILES := adb_install.cpp asn1_decoder.cpp bootloader.cpp legacy_property_service.c verifier.cpp set_metadata.c tw_atomic.cpp
 LOCAL_SHARED_LIBRARIES += libc liblog libcutils libmtdutils libfusesideload libmincrypttwrp libselinux
 
 ifneq ($(BOARD_RECOVERY_BLDRMSG_OFFSET),)
