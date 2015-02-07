@@ -56,6 +56,12 @@ extern "C"
 // Enable to print render time of each frame to the log file
 //#define PRINT_RENDER_TIME 1
 
+#ifdef _EVENT_LOGGING
+#define LOGEVENT(...) LOGERR(__VA_ARGS__)
+#else
+#define LOGEVENT(...) do {} while (0)
+#endif
+
 const static int CURTAIN_FADE = 32;
 
 using namespace rapidxml;
@@ -67,7 +73,6 @@ static TWAtomicInt gGuiConsoleRunning;
 static TWAtomicInt gGuiConsoleTerminate;
 static TWAtomicInt gForceRender;
 const int gNoAnimation = 1;
-static int gGuiInputRunning = 0;
 blanktimer blankTimer;
 int ors_read_fd = -1;
 
@@ -172,239 +177,277 @@ void curtainClose()
 #endif
 }
 
-static void * input_thread(void *cookie)
+class InputHandler
 {
-	int drag = 0;
-	static int touch_and_hold = 0, dontwait = 0;
-	static int touch_repeat = 0, key_repeat = 0;
-	static int x = 0, y = 0;
-	static struct timeval touchStart;
-	HardwareKeyboard *kb = PageManager::GetHardwareKeyboard();
-	MouseCursor *cursor = PageManager::GetMouseCursor();
+public:
+	void init()
+	{
+		// these might be read from DataManager in the future
+		touch_hold_ms = 500;
+		touch_repeat_ms = 100;
+		key_hold_ms = 500;
+		key_repeat_ms = 100;
+		touch_status = TS_NONE;
+		key_status = KS_NONE;
+		state = AS_NO_ACTION;
+		x = y = 0;
 
 #ifndef TW_NO_SCREEN_TIMEOUT
-	{
-		string seconds;
-		DataManager::GetValue("tw_screen_timeout_secs", seconds);
-		blankTimer.setTime(atoi(seconds.c_str()));
-		blankTimer.resetTimerAndUnblank();
-	}
+		{
+			string seconds;
+			DataManager::GetValue("tw_screen_timeout_secs", seconds);
+			blankTimer.setTime(atoi(seconds.c_str()));
+			blankTimer.resetTimerAndUnblank();
+		}
 #else
-	LOGINFO("Skipping screen timeout: TW_NO_SCREEN_TIMEOUT is set\n");
+		LOGINFO("Skipping screen timeout: TW_NO_SCREEN_TIMEOUT is set\n");
 #endif
+	}
 
-	for (;;)
+	// process input events. returns true if any event was received.
+	bool processInput();
+
+	void handleDrag();
+
+private:
+	// timeouts for touch/key hold and repeat
+	int touch_hold_ms;
+	int touch_repeat_ms;
+	int key_hold_ms;
+	int key_repeat_ms;
+
+	enum touch_status_enum {
+		TS_NONE = 0,
+		TS_TOUCH_AND_HOLD = 1,
+		TS_TOUCH_REPEAT = 2,
+	};
+
+	enum key_status_enum {
+		KS_NONE = 0,
+		KS_KEY_PRESSED = 1,
+		KS_KEY_REPEAT = 2,
+	};
+
+	enum action_state_enum {
+		AS_IN_ACTION_AREA = 0, // we've touched a spot with an action
+		AS_NO_ACTION = 1,    // we've touched in an empty area (no action) and ignore remaining events until touch release
+	};
+	touch_status_enum touch_status;
+	key_status_enum key_status;
+	action_state_enum state;
+	int x, y; // x and y coordinates of last touch
+	struct timeval touchStart; // used to track time for long press / key repeat
+
+	void processHoldAndRepeat();
+	void process_EV_REL(input_event& ev);
+	void process_EV_ABS(input_event& ev);
+	void process_EV_KEY(input_event& ev);
+
+	void doTouchStart();
+};
+
+InputHandler input_handler;
+
+
+bool InputHandler::processInput()
+{
+	input_event ev;
+	int ret = ev_get(&ev);
+
+	if (ret < 0)
 	{
-		// wait for the next event
-		struct input_event ev;
-		int state = 0, ret = 0;
+		// This path means that we did not get any new touch data, but
+		// we do not get new touch data if you press and hold on either
+		// the screen or on a keyboard key or mouse button
+		if (touch_status || key_status)
+			processHoldAndRepeat();
+		return (ret != -2);  // -2 means no more events in the queue
+	}
 
-		ret = ev_get(&ev, dontwait);
+	switch (ev.type)
+	{
+	case EV_ABS:
+		process_EV_ABS(ev);
+		break;
 
-		if (ret < 0)
+	case EV_REL:
+		process_EV_REL(ev);
+		break;
+
+	case EV_KEY:
+		process_EV_KEY(ev);
+		break;
+	}
+
+	blankTimer.resetTimerAndUnblank();
+	return true;  // we got an event, so there might be more in the queue
+}
+
+void InputHandler::processHoldAndRepeat()
+{
+	HardwareKeyboard *kb = PageManager::GetHardwareKeyboard();
+
+	// touch and key repeat section
+	struct timeval curTime;
+	gettimeofday(&curTime, NULL);
+	long seconds = curTime.tv_sec - touchStart.tv_sec;
+	long useconds = curTime.tv_usec - touchStart.tv_usec;
+	long mtime = ((seconds) * 1000 + useconds / 1000.0) + 0.5;
+
+	if (touch_status == TS_TOUCH_AND_HOLD && mtime > touch_hold_ms)
+	{
+		touch_status = TS_TOUCH_REPEAT;
+		gettimeofday(&touchStart, NULL);
+		LOGEVENT("TOUCH_HOLD: %d,%d\n", x, y);
+		PageManager::NotifyTouch(TOUCH_HOLD, x, y);
+	}
+	else if (touch_status == TS_TOUCH_REPEAT && mtime > touch_repeat_ms)
+	{
+		LOGEVENT("TOUCH_REPEAT: %d,%d\n", x, y);
+		gettimeofday(&touchStart, NULL);
+		PageManager::NotifyTouch(TOUCH_REPEAT, x, y);
+	}
+	else if (key_status == KS_KEY_PRESSED && mtime > key_hold_ms)
+	{
+		LOGEVENT("KEY_HOLD: %d,%d\n", x, y);
+		gettimeofday(&touchStart, NULL);
+		key_status = KS_KEY_REPEAT;
+		kb->KeyRepeat();
+	}
+	else if (key_status == KS_KEY_REPEAT && mtime > key_repeat_ms)
+	{
+		LOGEVENT("KEY_REPEAT: %d,%d\n", x, y);
+		gettimeofday(&touchStart, NULL);
+		kb->KeyRepeat();
+	}
+}
+
+void InputHandler::doTouchStart()
+{
+	LOGEVENT("TOUCH_START: %d,%d\n", x, y);
+	if (PageManager::NotifyTouch(TOUCH_START, x, y) > 0)
+		state = AS_NO_ACTION;
+	else
+		state = AS_IN_ACTION_AREA;
+	touch_status = TS_TOUCH_AND_HOLD;
+	gettimeofday(&touchStart, NULL);
+}
+
+void InputHandler::process_EV_ABS(input_event& ev)
+{
+	x = ev.value >> 16;
+	y = ev.value & 0xFFFF;
+
+	if (ev.code == 0)
+	{
+		if (state == AS_IN_ACTION_AREA)
 		{
-			struct timeval curTime;
-			gettimeofday(&curTime, NULL);
-			long mtime, seconds, useconds;
-
-			seconds = curTime.tv_sec - touchStart.tv_sec;
-			useconds = curTime.tv_usec - touchStart.tv_usec;
-
-			mtime = ((seconds) * 1000 + useconds / 1000.0) + 0.5;
-			if (touch_and_hold && mtime > 500)
-			{
-				touch_and_hold = 0;
-				touch_repeat = 1;
-				gettimeofday(&touchStart, NULL);
-#ifdef _EVENT_LOGGING
-				LOGERR("TOUCH_HOLD: %d,%d\n", x, y);
-#endif
-				PageManager::NotifyTouch(TOUCH_HOLD, x, y);
-				blankTimer.resetTimerAndUnblank();
-			}
-			else if (touch_repeat && mtime > 100)
-			{
-#ifdef _EVENT_LOGGING
-				LOGERR("TOUCH_REPEAT: %d,%d\n", x, y);
-#endif
-				gettimeofday(&touchStart, NULL);
-				PageManager::NotifyTouch(TOUCH_REPEAT, x, y);
-				blankTimer.resetTimerAndUnblank();
-			}
-			else if (key_repeat == 1 && mtime > 500)
-			{
-#ifdef _EVENT_LOGGING
-				LOGERR("KEY_HOLD: %d,%d\n", x, y);
-#endif
-				gettimeofday(&touchStart, NULL);
-				key_repeat = 2;
-				kb->KeyRepeat();
-				blankTimer.resetTimerAndUnblank();
-
-			}
-			else if (key_repeat == 2 && mtime > 100)
-			{
-#ifdef _EVENT_LOGGING
-				LOGERR("KEY_REPEAT: %d,%d\n", x, y);
-#endif
-				gettimeofday(&touchStart, NULL);
-				kb->KeyRepeat();
-				blankTimer.resetTimerAndUnblank();
-			}
+			LOGEVENT("TOUCH_RELEASE: %d,%d\n", x, y);
+			PageManager::NotifyTouch(TOUCH_RELEASE, x, y);
 		}
-		else if (ev.type == EV_ABS)
+		touch_status = TS_NONE;
+	}
+	else
+	{
+		if (!touch_status)
 		{
-
-			x = ev.value >> 16;
-			y = ev.value & 0xFFFF;
-
-			if (ev.code == 0)
-			{
-				if (state == 0)
-				{
-#ifdef _EVENT_LOGGING
-					LOGERR("TOUCH_RELEASE: %d,%d\n", x, y);
-#endif
-					PageManager::NotifyTouch(TOUCH_RELEASE, x, y);
-					blankTimer.resetTimerAndUnblank();
-					touch_and_hold = 0;
-					touch_repeat = 0;
-					if (!key_repeat)
-						dontwait = 0;
-				}
-				state = 0;
-				drag = 0;
-			}
-			else
-			{
-				if (!drag)
-				{
-					if (x != 0 && y != 0) {
-#ifdef _EVENT_LOGGING
-						LOGERR("TOUCH_START: %d,%d\n", x, y);
-#endif
-						if (PageManager::NotifyTouch(TOUCH_START, x, y) > 0)
-							state = 1;
-						drag = 1;
-						touch_and_hold = 1;
-						dontwait = 1;
-						key_repeat = 0;
-						gettimeofday(&touchStart, NULL);
-					}
-					blankTimer.resetTimerAndUnblank();
-				}
-				else
-				{
-					if (state == 0)
-					{
-#ifdef _EVENT_LOGGING
-						LOGERR("TOUCH_DRAG: %d,%d\n", x, y);
-#endif
-						if (PageManager::NotifyTouch(TOUCH_DRAG, x, y) > 0)
-							state = 1;
-						key_repeat = 0;
-						blankTimer.resetTimerAndUnblank();
-					}
-				}
-			}
+			doTouchStart();
 		}
-		else if (ev.type == EV_KEY)
+		else
 		{
-			// Handle key-press here
-#ifdef _EVENT_LOGGING
-			LOGERR("TOUCH_KEY: %d\n", ev.code);
-#endif
-			// Left mouse button
-			if(ev.code == BTN_LEFT)
+			if (state == AS_IN_ACTION_AREA)
 			{
-				if(ev.value == 1)
-				{
-					cursor->GetPos(x, y);
-
-					if (PageManager::NotifyTouch(TOUCH_START, x, y) > 0)
-						state = 1;
-					drag = 1;
-					touch_and_hold = 1;
-					dontwait = 1;
-					key_repeat = 0;
-					gettimeofday(&touchStart, NULL);
-				}
-				else if(drag == 1)
-				{
-					if (state == 0)
-					{
-						cursor->GetPos(x, y);
-
-#ifdef _EVENT_LOGGING
-						LOGERR("TOUCH_RELEASE: %d,%d\n", x, y);
-#endif
-						PageManager::NotifyTouch(TOUCH_RELEASE, x, y);
-
-						touch_and_hold = 0;
-						touch_repeat = 0;
-						if (!key_repeat)
-							dontwait = 0;
-					}
-					state = 0;
-					drag = 0;
-				}
-			}
-			// side mouse button, often used for "back" function
-			else if(ev.code == BTN_SIDE)
-			{
-				if(ev.value == 1)
-					kb->KeyDown(KEY_BACK);
-				else
-					kb->KeyUp(KEY_BACK);
-			} else if (ev.value != 0) {
-				// This is a key press
-				if (kb->KeyDown(ev.code)) {
-					// Key repeat is enabled for this key
-					key_repeat = 1;
-					touch_and_hold = 0;
-					touch_repeat = 0;
-					dontwait = 1;
-					gettimeofday(&touchStart, NULL);
-					blankTimer.resetTimerAndUnblank();
-				} else {
-					key_repeat = 0;
-					touch_and_hold = 0;
-					touch_repeat = 0;
-					dontwait = 0;
-					blankTimer.resetTimerAndUnblank();
-				}
-			} else {
-				// This is a key release
-				kb->KeyUp(ev.code);
-				key_repeat = 0;
-				touch_and_hold = 0;
-				touch_repeat = 0;
-				dontwait = 0;
-				blankTimer.resetTimerAndUnblank();
-			}
-		}
-		else if(ev.type == EV_REL)
-		{
-#ifdef _EVENT_LOGGING
-			LOGERR("EV_REL %d %d\n", ev.code, ev.value);
-#endif
-			if(ev.code == REL_X)
-				cursor->Move(ev.value, 0);
-			else if(ev.code == REL_Y)
-				cursor->Move(0, ev.value);
-
-			if(drag == 1) {
-				cursor->GetPos(x, y);
-#ifdef _EVENT_LOGGING
-				LOGERR("TOUCH_DRAG: %d, %d\n", x, y);
-#endif
-				if (PageManager::NotifyTouch(TOUCH_DRAG, x, y) > 0)
-					state = 1;
-				key_repeat = 0;
+				LOGEVENT("TOUCH_DRAG: %d,%d\n", x, y);
 			}
 		}
 	}
-	return NULL;
+}
+
+void InputHandler::process_EV_KEY(input_event& ev)
+{
+	HardwareKeyboard *kb = PageManager::GetHardwareKeyboard();
+
+	// Handle key-press here
+	LOGEVENT("TOUCH_KEY: %d\n", ev.code);
+	// Left mouse button is treated as a touch
+	if(ev.code == BTN_LEFT)
+	{
+		MouseCursor *cursor = PageManager::GetMouseCursor();
+		if(ev.value == 1)
+		{
+			cursor->GetPos(x, y);
+			doTouchStart();
+		}
+		else if(touch_status)
+		{
+			// Left mouse button was previously pressed and now is
+			// being released so send a TOUCH_RELEASE
+			if (state == AS_IN_ACTION_AREA)
+			{
+				cursor->GetPos(x, y);
+
+				LOGEVENT("Mouse TOUCH_RELEASE: %d,%d\n", x, y);
+				PageManager::NotifyTouch(TOUCH_RELEASE, x, y);
+			}
+			touch_status = TS_NONE;
+		}
+	}
+	// side mouse button, often used for "back" function
+	else if(ev.code == BTN_SIDE)
+	{
+		if(ev.value == 1)
+			kb->KeyDown(KEY_BACK);
+		else
+			kb->KeyUp(KEY_BACK);
+	} else if (ev.value != 0) {
+		// This is a key press
+		if (kb->KeyDown(ev.code)) {
+			// Key repeat is enabled for this key
+			key_status = KS_KEY_PRESSED;
+			touch_status = TS_NONE;
+			gettimeofday(&touchStart, NULL);
+		} else {
+			key_status = KS_NONE;
+			touch_status = TS_NONE;
+		}
+	} else {
+		// This is a key release
+		kb->KeyUp(ev.code);
+		key_status = KS_NONE;
+		touch_status = TS_NONE;
+	}
+}
+
+void InputHandler::process_EV_REL(input_event& ev)
+{
+	// Mouse movement
+	MouseCursor *cursor = PageManager::GetMouseCursor();
+	LOGEVENT("EV_REL %d %d\n", ev.code, ev.value);
+	if(ev.code == REL_X)
+		cursor->Move(ev.value, 0);
+	else if(ev.code == REL_Y)
+		cursor->Move(0, ev.value);
+
+	if(touch_status) {
+		cursor->GetPos(x, y);
+		LOGEVENT("Mouse TOUCH_DRAG: %d, %d\n", x, y);
+		key_status = KS_NONE;
+	}
+}
+
+void InputHandler::handleDrag()
+{
+	// This allows us to only send one NotifyTouch event per render
+	// cycle to reduce overhead and perceived input latency.
+	static int prevx = 0, prevy = 0; // these track where the last drag notice was so that we don't send duplicate drag notices
+	if (touch_status && (x != prevx || y != prevy)) {
+		prevx = x;
+		prevy = y;
+		if (PageManager::NotifyTouch(TOUCH_DRAG, x, y) > 0)
+			state = AS_NO_ACTION;
+		else
+			state = AS_IN_ACTION_AREA;
+	}
 }
 
 static void setup_ors_command()
@@ -517,21 +560,29 @@ static void loopTimer(void)
 
 	do
 	{
+		bool got_event = input_handler.processInput(); // get inputs but don't send drag notices
 		timespec curTime;
 		clock_gettime(CLOCK_MONOTONIC, &curTime);
 
 		timespec diff = TWFunc::timespec_diff(lastCall, curTime);
 
-		// This is really 30 times per second
-		if (diff.tv_sec || diff.tv_nsec > 33333333)
+		// This is really 2 or 30 times per second
+		// As long as we get events, increase the timeout so we can catch up with input
+		long timeout = got_event ? 500000000 : 33333333;
+
+		if (diff.tv_sec || diff.tv_nsec > timeout)
 		{
+			// int32_t input_time = TWFunc::timespec_diff_ms(lastCall, curTime);
+			// LOGINFO("loopTimer(): %u ms, count: %u\n", input_time, count);
+
 			lastCall = curTime;
+			input_handler.handleDrag(); // send only drag notices if needed
 			return;
 		}
 
 		// We need to sleep some period time microseconds
-		unsigned int sleepTime = 33333 -(diff.tv_nsec / 1000);
-		usleep(sleepTime);
+		//unsigned int sleepTime = 33333 -(diff.tv_nsec / 1000);
+		//usleep(sleepTime); // removed so we can scan for input
 	} while (1);
 }
 
@@ -555,10 +606,6 @@ static int runPages(const char *page_name, const int stop_on_page_done)
 
 	DataManager::SetValue("tw_loaded", 1);
 
-#ifdef PRINT_RENDER_TIME
-	timespec start, end;
-	int32_t render_t, flip_t;
-#endif
 #ifndef TW_OEM_BUILD
 	struct timeval timeout;
 	fd_set fdset;
@@ -600,6 +647,8 @@ static int runPages(const char *page_name, const int stop_on_page_done)
 #else
 			if (ret > 1)
 			{
+				timespec start, end;
+				int32_t render_t, flip_t;
 				clock_gettime(CLOCK_MONOTONIC, &start);
 				PageManager::Render();
 				clock_gettime(CLOCK_MONOTONIC, &end);
@@ -829,18 +878,12 @@ extern "C" int gui_startPage(const char *page_name, const int allow_commands, in
 	gGuiConsoleTerminate.set_value(1);
 
 	while (gGuiConsoleRunning.get_value())
-		loopTimer();
+		usleep(10000);
 
 	// Set the default package
 	PageManager::SelectPackage("TWRP");
 
-	if (!gGuiInputRunning)
-	{
-		// Start by spinning off an input handler.
-		pthread_t t;
-		pthread_create(&t, NULL, input_thread, NULL);
-		gGuiInputRunning = 1;
-	}
+	input_handler.init();
 #ifndef TW_OEM_BUILD
 	if (allow_commands)
 	{
