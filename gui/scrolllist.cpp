@@ -91,7 +91,7 @@ GUIScrollList::GUIScrollList(xml_node<>* node) : GUIObject(node)
 		attr = child->first_attribute("separatorheight");
 		if (attr) {
 			string parsevalue = gui_parse_text(attr->value());
-			mHeaderSeparatorH = atoi(parsevalue.c_str());
+			mHeaderSeparatorH = scale_theme_y(atoi(parsevalue.c_str()));
 			header_separator_height_specified = -1;
 		}
 	}
@@ -156,7 +156,7 @@ GUIScrollList::GUIScrollList(xml_node<>* node) : GUIObject(node)
 		attr = child->first_attribute("spacing");
 		if (attr) {
 			string parsevalue = gui_parse_text(attr->value());
-			mItemSpacing = atoi(parsevalue.c_str());
+			mItemSpacing = scale_theme_y(atoi(parsevalue.c_str()));
 		}
 
 		attr = child->first_attribute("highlightcolor");
@@ -185,7 +185,7 @@ GUIScrollList::GUIScrollList(xml_node<>* node) : GUIObject(node)
 		attr = child->first_attribute("height");
 		if (attr) {
 			string parsevalue = gui_parse_text(attr->value());
-			mSeparatorH = atoi(parsevalue.c_str());
+			mSeparatorH = scale_theme_y(atoi(parsevalue.c_str()));
 			if (!header_separator_height_specified)
 				mHeaderSeparatorH = mSeparatorH;
 		}
@@ -206,25 +206,25 @@ GUIScrollList::GUIScrollList(xml_node<>* node) : GUIObject(node)
 		attr = child->first_attribute("w");
 		if (attr) {
 			string parsevalue = gui_parse_text(attr->value());
-			mFastScrollW = atoi(parsevalue.c_str());
+			mFastScrollW = scale_theme_x(atoi(parsevalue.c_str()));
 		}
 
 		attr = child->first_attribute("linew");
 		if (attr) {
 			string parsevalue = gui_parse_text(attr->value());
-			mFastScrollLineW = atoi(parsevalue.c_str());
+			mFastScrollLineW = scale_theme_x(atoi(parsevalue.c_str()));
 		}
 
 		attr = child->first_attribute("rectw");
 		if (attr) {
 			string parsevalue = gui_parse_text(attr->value());
-			mFastScrollRectW = atoi(parsevalue.c_str());
+			mFastScrollRectW = scale_theme_x(atoi(parsevalue.c_str()));
 		}
 
 		attr = child->first_attribute("recth");
 		if (attr) {
 			string parsevalue = gui_parse_text(attr->value());
-			mFastScrollRectH = atoi(parsevalue.c_str());
+			mFastScrollRectH = scale_theme_y(atoi(parsevalue.c_str()));
 		}
 	}
 
@@ -259,9 +259,6 @@ GUIScrollList::GUIScrollList(xml_node<>* node) : GUIObject(node)
 
 GUIScrollList::~GUIScrollList()
 {
-	delete mHeaderIcon;
-	delete mBackground;
-	delete mFont;
 }
 
 void GUIScrollList::SetMaxIconSize(int w, int h)
@@ -632,8 +629,10 @@ void GUIScrollList::HandleScrolling()
 		firstDisplayedItem--;
 		y_offset -= actualItemHeight;
 	}
-	if (firstDisplayedItem == 0 && y_offset > 0)
+	if (firstDisplayedItem == 0 && y_offset > 0) {
 		y_offset = 0; // user kept dragging downward past the top of the list, so always reset the offset to 0 since we can't scroll any further in this direction
+		scrollingSpeed = 0; // stop kinetic scrolling
+	}
 
 	// handle dragging upward, scrolling downward
 	int totalSize = GetItemCount();
@@ -649,9 +648,11 @@ void GUIScrollList::HandleScrolling()
 	if (bottom_offset != 0 && firstDisplayedItem + lines + 1 >= totalSize && y_offset <= bottom_offset) {
 		firstDisplayedItem = totalSize - lines - 1;
 		y_offset = bottom_offset;
+		scrollingSpeed = 0; // stop kinetic scrolling
 	} else if (firstDisplayedItem + lines >= totalSize && y_offset < 0) {
 		firstDisplayedItem = totalSize - lines;
 		y_offset = 0;
+		scrollingSpeed = 0; // stop kinetic scrolling
 	}
 }
 

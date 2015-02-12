@@ -127,7 +127,7 @@ GUIInput::GUIInput(xml_node<>* node)
 		if (attr)
 		{
 			std::string cwidth = gui_parse_text(attr->value());
-			CursorWidth = atoi(cwidth.c_str());
+			CursorWidth = scale_theme_x(atoi(cwidth.c_str()));
 		}
 	}
 	DrawCursor = HasInputFocus;
@@ -214,8 +214,6 @@ GUIInput::GUIInput(xml_node<>* node)
 GUIInput::~GUIInput()
 {
 	if (mInputText)	 	delete mInputText;
-	if (mBackground)	delete mBackground;
-	if (mCursor)		delete mCursor;
 	if (mAction)		delete mAction;
 }
 
