@@ -27,9 +27,6 @@ extern "C" {
 
 GUIImage::GUIImage(xml_node<>* node) : GUIObject(node)
 {
-	xml_attribute<>* attr;
-	xml_node<>* child;
-
 	mImage = NULL;
 	mHighlightImage = NULL;
 	isHighlighted = false;
@@ -37,24 +34,16 @@ GUIImage::GUIImage(xml_node<>* node) : GUIObject(node)
 	if (!node)
 		return;
 
-	child = node->first_node("image");
-	if (child)
-	{
-		attr = child->first_attribute("resource");
-		if (attr)
-			mImage = PageManager::FindResource(attr->value());
-		attr = child->first_attribute("highlightresource");
-		if (attr)
-			mHighlightImage = PageManager::FindResource(attr->value());
-	}
+	mImage = LoadAttrImage(FindNode(node, "image"), "resource");
+	mHighlightImage = LoadAttrImage(FindNode(node, "image"), "highlightresource");
 
 	// Load the placement
-	LoadPlacement(node->first_node("placement"), &mRenderX, &mRenderY, NULL, NULL, &mPlacement);
+	LoadPlacement(FindNode(node, "placement"), &mRenderX, &mRenderY, NULL, NULL, &mPlacement);
 
 	if (mImage && mImage->GetResource())
 	{
-		mRenderW = gr_get_width(mImage->GetResource());
-		mRenderH = gr_get_height(mImage->GetResource());
+		mRenderW = mImage->GetWidth();
+		mRenderH = mImage->GetHeight();
 
 		// Adjust for placement
 		if (mPlacement != TOP_LEFT && mPlacement != BOTTOM_LEFT)
@@ -73,8 +62,6 @@ GUIImage::GUIImage(xml_node<>* node) : GUIObject(node)
 		}
 		SetPlacement(TOP_LEFT);
 	}
-
-	return;
 }
 
 int GUIImage::Render(void)

@@ -33,6 +33,7 @@ GUISlider::GUISlider(xml_node<>* node) : GUIObject(node)
 	xml_node<>* child;
 
 	sAction = NULL;
+	sSliderLabel = NULL;
 	sSlider = NULL;
 	sSliderUsed = NULL;
 	sTouch = NULL;
@@ -44,34 +45,40 @@ GUISlider::GUISlider(xml_node<>* node) : GUIObject(node)
 		return;
 	}
 
-	child = node->first_node("resource");
+	// Load the resources
+	child = FindNode(node, "resource");
 	if (child)
 	{
-		attr = child->first_attribute("base");
-		if (attr)
-			sSlider = PageManager::FindResource(attr->value());
+		sSlider = LoadAttrImage(child, "base");
+		sSliderUsed = LoadAttrImage(child, "used");
+		sTouch = LoadAttrImage(child, "touch");
+	}
 
-		attr = child->first_attribute("used");
-		if (attr)
-			sSliderUsed = PageManager::FindResource(attr->value());
-
-		attr = child->first_attribute("touch");
-		if (attr)
-			sTouch = PageManager::FindResource(attr->value());
+	// Load the text label
+	sSliderLabel = new GUIText(node);
+	if (sSliderLabel->Render() < 0)
+	{
+		delete sSliderLabel;
+		sSliderLabel = NULL;
 	}
 
 	// Load the placement
-	LoadPlacement(node->first_node("placement"), &mRenderX, &mRenderY);
+	Placement TextPlacement = CENTER;
+	LoadPlacement(FindNode(node, "placement"), &mRenderX, &mRenderY, &mRenderW, &mRenderH, &TextPlacement);
 
-	if (sSlider && sSlider->GetResource())
-	{
-		mRenderW = gr_get_width(sSlider->GetResource());
-		mRenderH = gr_get_height(sSlider->GetResource());
+	mRenderW = sSlider->GetWidth();
+	mRenderH = sSlider->GetHeight();
+	if (sSliderLabel) {
+		int sTextX = mRenderX + (mRenderW / 2);
+		int w, h;
+		sSliderLabel->GetCurrentBounds(w, h);
+		int sTextY = mRenderY + ((mRenderH - h) / 2);
+		sSliderLabel->SetRenderPos(sTextX, sTextY);
 	}
 	if (sTouch && sTouch->GetResource())
 	{
-		sTouchW = gr_get_width(sTouch->GetResource());  // Width of the "touch image" that follows the touch (arrow)
-		sTouchH = gr_get_height(sTouch->GetResource()); // Height of the "touch image" that follows the touch (arrow)
+		sTouchW = sTouch->GetWidth();  // Width of the "touch image" that follows the touch (arrow)
+		sTouchH = sTouch->GetHeight(); // Height of the "touch image" that follows the touch (arrow)
 	}
 
 	//LOGINFO("mRenderW: %i mTouchW: %i\n", mRenderW, mTouchW);
@@ -89,6 +96,7 @@ GUISlider::GUISlider(xml_node<>* node) : GUIObject(node)
 GUISlider::~GUISlider()
 {
 	delete sAction;
+	delete sSliderLabel;
 }
 
 int GUISlider::Render(void)
@@ -109,6 +117,11 @@ int GUISlider::Render(void)
 	// Draw the touch icon
 	if (sTouch && sTouch->GetResource())
 		gr_blit(sTouch->GetResource(), 0, 0, sTouchW, sTouchH, sCurTouchX, (mRenderY + ((mRenderH - sTouchH) / 2)));
+
+	if (sSliderLabel) {
+		int ret = sSliderLabel->Render();
+		if (ret < 0)		return ret;
+	}
 
 	sUpdate = 0;
 	return 0;

@@ -45,19 +45,15 @@ GUICheckbox::GUICheckbox(xml_node<>* node)
 	mLabel = new GUIText(node);
 
 	// Read the check states
-	child = node->first_node("image");
+	child = FindNode(node, "image");
 	if (child)
 	{
-		attr = child->first_attribute("checked");
-		if (attr)
-			mChecked = PageManager::FindResource(attr->value());
-		attr = child->first_attribute("unchecked");
-		if (attr)
-			mUnchecked = PageManager::FindResource(attr->value());
+		mChecked = LoadAttrImage(child, "checked");
+		mUnchecked = LoadAttrImage(child, "unchecked");
 	}
 
 	// Get the variable data
-	child = node->first_node("data");
+	child = FindNode(node, "data");
 	if (child)
 	{
 		attr = child->first_attribute("variable");
@@ -68,22 +64,17 @@ GUICheckbox::GUICheckbox(xml_node<>* node)
 			DataManager::SetValue(mVarName, attr->value());
 	}
 
-	mCheckW = 0;	mCheckH = 0;
-	if (mChecked && mChecked->GetResource())
+	mCheckW = mChecked->GetWidth();
+	mCheckH = mChecked->GetHeight();
+	if (mCheckW == 0)
 	{
-		mCheckW = gr_get_width(mChecked->GetResource());
-		mCheckH = gr_get_height(mChecked->GetResource());
-	}
-	else if (mUnchecked && mUnchecked->GetResource())
-	{
-		mCheckW = gr_get_width(mUnchecked->GetResource());
-		mCheckH = gr_get_height(mUnchecked->GetResource());
+		mCheckW = mUnchecked->GetWidth();
+		mCheckH = mUnchecked->GetHeight();
 	}
 
 	int x, y, w, h;
 	mLabel->GetRenderPos(x, y, w, h);
 	SetRenderPos(x, y, 0, 0);
-	return;
 }
 
 GUICheckbox::~GUICheckbox()

@@ -101,7 +101,6 @@ extern "C" void gui_set_FILE(FILE* f)
 
 GUIConsole::GUIConsole(xml_node<>* node) : GUIObject(node)
 {
-	xml_attribute<>* attr;
 	xml_node<>* child;
 
 	mFont = NULL;
@@ -126,61 +125,38 @@ GUIConsole::GUIConsole(xml_node<>* node) : GUIObject(node)
 	}
 	else
 	{
-		child = node->first_node("font");
-		if (child)
-		{
-			attr = child->first_attribute("resource");
-			if (attr)
-				mFont = PageManager::FindResource(attr->value());
-		}
+		mFont = LoadAttrFont(FindNode(node, "font"), "resource");
 
-		child = node->first_node("color");
+		child = FindNode(node, "color");
 		if (child)
 		{
-			attr = child->first_attribute("foreground");
-			if (attr)
-			{
-				std::string color = attr->value();
-				ConvertStrToColor(color, &mForegroundColor);
-			}
-			attr = child->first_attribute("background");
-			if (attr)
-			{
-				std::string color = attr->value();
-				ConvertStrToColor(color, &mBackgroundColor);
-			}
-			attr = child->first_attribute("scroll");
-			if (attr)
-			{
-				std::string color = attr->value();
-				ConvertStrToColor(color, &mScrollColor);
-			}
+			mForegroundColor = LoadAttrColor(child, "foreground", mForegroundColor);
+			mBackgroundColor = LoadAttrColor(child, "background", mBackgroundColor);
+			mScrollColor = LoadAttrColor(child, "scroll", mScrollColor);
 		}
 
 		// Load the placement
-		LoadPlacement(node->first_node("placement"), &mConsoleX, &mConsoleY, &mConsoleW, &mConsoleH);
+		LoadPlacement(FindNode(node, "placement"), &mConsoleX, &mConsoleY, &mConsoleW, &mConsoleH);
 
-		child = node->first_node("slideout");
+		child = FindNode(node, "slideout");
 		if (child)
 		{
 			mSlideout = 1;
 			LoadPlacement(child, &mSlideoutX, &mSlideoutY);
 
-			attr = child->first_attribute("resource");
-			if (attr)   mSlideoutImage = PageManager::FindResource(attr->value());
+			mSlideoutImage = LoadAttrImage(child, "resource");
 
 			if (mSlideoutImage && mSlideoutImage->GetResource())
 			{
-				mSlideoutW = gr_get_width(mSlideoutImage->GetResource());
-				mSlideoutH = gr_get_height(mSlideoutImage->GetResource());
+				mSlideoutW = mSlideoutImage->GetWidth();
+				mSlideoutH = mSlideoutImage->GetHeight();
 			}
 		}
 	}
 
-	mFontHeight = gr_getMaxFontHeight(mFont ? mFont->GetResource() : NULL);
+	mFontHeight = mFont->GetHeight();
 	SetActionPos(mRenderX, mRenderY, mRenderW, mRenderH);
 	SetRenderPos(mConsoleX, mConsoleY);
-	return;
 }
 
 int GUIConsole::RenderSlideout(void)
