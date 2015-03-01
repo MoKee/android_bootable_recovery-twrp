@@ -52,7 +52,7 @@ GUIText::GUIText(xml_node<>* node)
 	LoadPlacement(FindNode(node, "placement"), &mRenderX, &mRenderY, &mRenderW, &mRenderH, &mPlacement);
 
 
-	xml_node<>* child = node->first_node("text");
+	xml_node<>* child = FindNode(node,"text");
 
     if (child)  {
         xml_attribute<>* id = child->first_attribute("id");
