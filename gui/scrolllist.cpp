@@ -29,7 +29,6 @@ extern "C" {
 
 const float SCROLLING_SPEED_DECREMENT = 0.9; // friction
 const int SCROLLING_FLOOR = 2; // minimum pixels for scrolling to stop
-const float SCROLLING_SPEED_LIMIT = 2.5; // maximum number of items to scroll per update
 
 GUIScrollList::GUIScrollList(xml_node<>* node) : GUIObject(node)
 {
@@ -42,7 +41,6 @@ GUIScrollList::GUIScrollList(xml_node<>* node) : GUIObject(node)
 	mHeaderIsStatic = false;
 	mBackground = mHeaderIcon = NULL;
 	mFont = NULL;
-	mBackgroundW = mBackgroundH = 0;
 	mFastScrollW = mFastScrollLineW = mFastScrollRectW = mFastScrollRectH = 0;
 	mFastScrollRectCurrentY = mFastScrollRectCurrentH = mFastScrollRectTouchY = 0;
 	lastY = last2Y = fastScroll = 0;
@@ -57,10 +55,12 @@ GUIScrollList::GUIScrollList(xml_node<>* node) : GUIObject(node)
 	ConvertStrToColor("white", &mFastScrollLineColor);
 	ConvertStrToColor("white", &mFastScrollRectColor);
 	hasHighlightColor = false;
+	allowSelection = true;
 	selectedItem = NO_ITEM;
 
 	// Load header text
-	child = node->first_node("text");
+	// note: node can be NULL for the emergency console
+	child = node ? node->first_node("text") : NULL;
 	if (child)  mHeaderText = child->value();
 	// Simple way to check for static state
 	mLastHeaderValue = gui_parse_text(mHeaderText);
@@ -142,12 +142,6 @@ GUIScrollList::GUIScrollList(xml_node<>* node) : GUIObject(node)
 
 	if (actualItemHeight / 3 > 6)
 		touchDebounce = actualItemHeight / 3;
-
-	if (mBackground && mBackground->GetResource())
-	{
-		mBackgroundW = mBackground->GetWidth();
-		mBackgroundH = mBackground->GetHeight();
-	}
 }
 
 GUIScrollList::~GUIScrollList()
@@ -170,7 +164,7 @@ void GUIScrollList::SetMaxIconSize(int w, int h)
 void GUIScrollList::SetVisibleListLocation(size_t list_index)
 {
 	// This will make sure that the item indicated by list_index is visible on the screen
-	size_t lines = GetDisplayItemCount(), listSize = GetItemCount();
+	size_t lines = GetDisplayItemCount();
 
 	if (list_index <= (unsigned)firstDisplayedItem) {
 		// list_index is above the currently displayed items, put the selected item at the very top
@@ -187,6 +181,8 @@ void GUIScrollList::SetVisibleListLocation(size_t list_index)
 			// There's no partial row so zero out the offset
 			y_offset = 0;
 		}
+		if (firstDisplayedItem < 0)
+			firstDisplayedItem = 0;
 	}
 	scrollingSpeed = 0; // stop kinetic scrolling on setting visible location
 	mUpdate = 1;
@@ -207,16 +203,18 @@ int GUIScrollList::Render(void)
 	// Next, render the background resource (if it exists)
 	if (mBackground && mBackground->GetResource())
 	{
-		int mBackgroundX = mRenderX + ((mRenderW - mBackgroundW) / 2);
-		int mBackgroundY = mRenderY + ((mRenderH - mBackgroundH) / 2);
-		gr_blit(mBackground->GetResource(), 0, 0, mBackgroundW, mBackgroundH, mBackgroundX, mBackgroundY);
+		int BackgroundW = mBackground->GetWidth();
+		int BackgroundH = mBackground->GetHeight();
+		int BackgroundX = mRenderX + ((mRenderW - BackgroundW) / 2);
+		int BackgroundY = mRenderY + ((mRenderH - BackgroundH) / 2);
+		gr_blit(mBackground->GetResource(), 0, 0, BackgroundW, BackgroundH, BackgroundX, BackgroundY);
 	}
 
 	// This tells us how many full lines we can actually render
 	size_t lines = GetDisplayItemCount();
 
 	size_t listSize = GetItemCount();
-	int listW = mRenderW;
+	int listW = mRenderW; // this is only used for the separators - the list items are rendered in the full width of the list
 
 	if (listSize <= lines) {
 		hasScroll = false;
@@ -231,11 +229,7 @@ int GUIScrollList::Render(void)
 			lines++;
 	}
 
-	void* fontResource = NULL;
-	if (mFont)  fontResource = mFont->GetResource();
-
 	int yPos = mRenderY + mHeaderH + y_offset;
-	int fontOffsetY = (int)((actualItemHeight - mFontHeight) / 2);
 
 	// render all visible items
 	for (size_t line = 0; line < lines; line++)
@@ -244,38 +238,7 @@ int GUIScrollList::Render(void)
 		if (itemindex >= listSize)
 			break;
 
-		// get item data
-		ImageResource* icon;
-		std::string label;
-		if (GetListItem(itemindex, icon, label))
-			break;
-
-		if (hasHighlightColor && itemindex == selectedItem) {
-			// Highlight the item background of the selected item
-			gr_color(mHighlightColor.red, mHighlightColor.green, mHighlightColor.blue, mHighlightColor.alpha);
-			gr_fill(mRenderX, yPos, mRenderW, actualItemHeight);
-		}
-
-		if (itemindex == selectedItem) {
-			// Use the highlight color for the font
-			gr_color(mFontHighlightColor.red, mFontHighlightColor.green, mFontHighlightColor.blue, mFontHighlightColor.alpha);
-		} else {
-			// Set the color for the font
-			gr_color(mFontColor.red, mFontColor.green, mFontColor.blue, mFontColor.alpha);
-		}
-
-		// render icon
-		if (icon && icon->GetResource()) {
-			int currentIconHeight = icon->GetHeight();
-			int currentIconWidth = icon->GetWidth();
-			int currentIconOffsetY = (actualItemHeight - currentIconHeight) / 2;
-			int currentIconOffsetX = (maxIconWidth - currentIconWidth) / 2;
-			int image_y = (yPos + currentIconOffsetY);
-			gr_blit(icon->GetResource(), 0, 0, currentIconWidth, currentIconHeight, mRenderX + currentIconOffsetX, image_y);
-		}
-
-		// render label text
-		gr_textEx(mRenderX + maxIconWidth + 5, yPos + fontOffsetY, label.c_str(), fontResource);
+		RenderItem(itemindex, yPos, itemindex == selectedItem);
 
 		// Add the separator
 		gr_color(mSeparatorColor.red, mSeparatorColor.green, mSeparatorColor.blue, mSeparatorColor.alpha);
@@ -285,26 +248,25 @@ int GUIScrollList::Render(void)
 		yPos += actualItemHeight;
 	}
 
-	// Render the Header
+	// Render the Header (last so that it overwrites the top most row for per pixel scrolling)
 	yPos = mRenderY;
 	if (mHeaderH > 0) {
 		// First step, fill background
 		gr_color(mHeaderBackgroundColor.red, mHeaderBackgroundColor.green, mHeaderBackgroundColor.blue, mHeaderBackgroundColor.alpha);
 		gr_fill(mRenderX, mRenderY, mRenderW, mHeaderH);
 
-		int mIconOffsetX = 0;
+		int IconOffsetX = 0;
 
 		// render the icon if it exists
-		ImageResource* headerIcon = mHeaderIcon;
-		if (headerIcon && headerIcon->GetResource())
+		if (mHeaderIcon && mHeaderIcon->GetResource())
 		{
-			gr_blit(headerIcon->GetResource(), 0, 0, mHeaderIconWidth, mHeaderIconHeight, mRenderX + ((mHeaderIconWidth - maxIconWidth) / 2), (yPos + (int)((mHeaderH - mHeaderIconHeight) / 2)));
-			mIconOffsetX = maxIconWidth;
+			gr_blit(mHeaderIcon->GetResource(), 0, 0, mHeaderIconWidth, mHeaderIconHeight, mRenderX + ((mHeaderIconWidth - maxIconWidth) / 2), (yPos + (int)((mHeaderH - mHeaderIconHeight) / 2)));
+			IconOffsetX = maxIconWidth;
 		}
 
 		// render the text
 		gr_color(mHeaderFontColor.red, mHeaderFontColor.green, mHeaderFontColor.blue, mHeaderFontColor.alpha);
-		gr_textEx(mRenderX + mIconOffsetX + 5, yPos + (int)((mHeaderH - mFontHeight) / 2), mLastHeaderValue.c_str(), fontResource);
+		gr_textEx(mRenderX + IconOffsetX + 5, yPos + (int)((mHeaderH - mFontHeight) / 2), mLastHeaderValue.c_str(), mFont->GetResource());
 
 		// Add the separator
 		gr_color(mHeaderSeparatorColor.red, mHeaderSeparatorColor.green, mHeaderSeparatorColor.blue, mHeaderSeparatorColor.alpha);
@@ -349,6 +311,45 @@ int GUIScrollList::Render(void)
 	return 0;
 }
 
+void GUIScrollList::RenderItem(size_t itemindex, int yPos, bool selected)
+{
+	RenderStdItem(yPos, selected, NULL, "implement RenderItem!");
+}
+
+void GUIScrollList::RenderStdItem(int yPos, bool selected, ImageResource* icon, const char* text, int iconAndTextH)
+{
+	if (hasHighlightColor && selected) {
+		// Highlight the item background of the selected item
+		gr_color(mHighlightColor.red, mHighlightColor.green, mHighlightColor.blue, mHighlightColor.alpha);
+		gr_fill(mRenderX, yPos, mRenderW, actualItemHeight);
+	}
+
+	if (selected) {
+		// Use the highlight color for the font
+		gr_color(mFontHighlightColor.red, mFontHighlightColor.green, mFontHighlightColor.blue, mFontHighlightColor.alpha);
+	} else {
+		// Set the color for the font
+		gr_color(mFontColor.red, mFontColor.green, mFontColor.blue, mFontColor.alpha);
+	}
+
+	if (!iconAndTextH)
+		iconAndTextH = actualItemHeight;
+
+	// render icon
+	if (icon && icon->GetResource()) {
+		int iconH = icon->GetHeight();
+		int iconW = icon->GetWidth();
+		int iconY = yPos + (iconAndTextH - iconH) / 2;
+		int iconX = mRenderX + (maxIconWidth - iconW) / 2;
+		gr_blit(icon->GetResource(), 0, 0, iconW, iconH, iconX, iconY);
+	}
+
+	// render label text
+	int textX = mRenderX + maxIconWidth + 5;
+	int textY = yPos + (iconAndTextH - mFontHeight) / 2;
+	gr_textEx(textX, textY, text, mFont->GetResource());
+}
+
 int GUIScrollList::Update(void)
 {
 	if(!isConditionTrue())
@@ -363,7 +364,10 @@ int GUIScrollList::Update(void)
 	}
 
 	// Handle kinetic scrolling
-	int maxScrollDistance = actualItemHeight * SCROLLING_SPEED_LIMIT;
+	// maximum number of items to scroll per update
+	float maxItemsScrolledPerFrame = std::max(2.5, float(GetDisplayItemCount() / 4) + 0.5);
+
+	int maxScrollDistance = actualItemHeight * maxItemsScrolledPerFrame;
 	int oldScrollingSpeed = scrollingSpeed;
 	if (scrollingSpeed == 0) {
 		// Do nothing
@@ -440,7 +444,7 @@ int GUIScrollList::NotifyTouch(TOUCH_STATE state, int x, int y)
 		if (scrollingSpeed != 0) {
 			selectedItem = NO_ITEM; // this allows the user to tap the list to stop the scrolling without selecting the item they tap
 			scrollingSpeed = 0; // stop scrolling on a new touch
-		} else if (!fastScroll) {
+		} else if (!fastScroll && allowSelection) {
 			// find out which item the user touched
 			selectedItem = HitTestItem(x, y);
 		}

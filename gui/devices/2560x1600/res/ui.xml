@@ -159,12 +159,12 @@
 		<variable name="fileselector_highlight_color" value="#505050" />
 		<variable name="fileselector_highlight_font_color" value="#33B5E5" />
 		<variable name="fileselector_spacing" value="18" />
-		<variable name="fastscroll_linecolor" value="#808080" />
-		<variable name="fastscroll_rectcolor" value="#808080" />
+		<variable name="fastscroll_linecolor" value="#50505080" />
+		<variable name="fastscroll_rectcolor" value="#33B5E580" />
 		<variable name="fastscroll_w" value="80" />
 		<variable name="fastscroll_linew" value="4" />
-		<variable name="fastscroll_rectw" value="60" />
-		<variable name="fastscroll_recth" value="100" />
+		<variable name="fastscroll_rectw" value="24" />
+		<variable name="fastscroll_recth" value="60" />
 		<variable name="zipstorage_text_y" value="190" />
 		<variable name="listbox_x" value="680" />
 		<variable name="listbox_y" value="195" />
@@ -242,8 +242,8 @@
 				<placement x="400" y="55" />
 				<conditions>
 					<condition var1="tw_no_battery_percent" var2="0" />
-					<condition var1="tw_battery" op=">" var2="0" />
-					<condition var1="tw_battery" op="<" var2="101" />
+					<condition var1="tw_battery" op="&gt;" var2="0" />
+					<condition var1="tw_battery" op="&lt;" var2="101" />
 				</conditions>
 				<text>Battery Level: %tw_battery%</text>
 			</object>
@@ -424,8 +424,8 @@
 				<layout3>
 					<keysize height="172" width="212" />
 					<row1 key01="204:" key02="1" key03="2" key04="3" key05="4" key06="5" key07="6" key08="7" key09="8" key10="9" key11="0" key12="236:c:8" />
-					<row2 key01="286:layout1" key02="208:#" key03="208:$" key04="208:%" key05="208:&" key06="208:*" key07="208:-" key08="208:+" key09="208:(" key10="208:)" key11="402:action" />
-					<row3 key01="354:layout4" key02="206:<" key03="206:>" key04="206:=" key05="206:'" key06="206:;" key07="206:," key08="206:." key09="206:!" key10="206:?" key11="352:layout4" />
+					<row2 key01="286:layout1" key02="208:#" key03="208:$" key04="208:%" key05="208:&amp;" key06="208:*" key07="208:-" key08="208:+" key09="208:(" key10="208:)" key11="402:action" />
+					<row3 key01="354:layout4" key02="206:&lt;" key03="206:&gt;" key04="206:=" key05="206:'" key06="206:;" key07="206:," key08="206:." key09="206:!" key10="206:?" key11="352:layout4" />
 					<row4 key01="354:" key02="206:/" key03="206:@" key04="1030: " key05="206:c:34" key06="206:_" />
 				</layout3>
 				<layout4>
