@@ -3,7 +3,11 @@
 #ifndef _RESOURCE_HEADER
 #define _RESOURCE_HEADER
 
-#include "../minzip/Zip.h"
+#include <string>
+#include <vector>
+#include <map>
+
+struct ZipArchive;
 
 extern "C" {
 #include "../minuitwrp/minui.h"
@@ -18,7 +22,6 @@ public:
 
 public:
 	std::string GetName() { return mName; }
-	virtual bool loadedOK() = 0;
 
 private:
 	std::string mName;
@@ -47,8 +50,6 @@ public:
 	void* GetResource() { return this ? mFont : NULL; }
 	int GetHeight() { return gr_getMaxFontHeight(this ? mFont : NULL); }
 
-	virtual bool loadedOK() { return mFont != NULL; }
-
 protected:
 	void* mFont;
 	Type m_type;
@@ -64,8 +65,6 @@ public:
 	gr_surface GetResource() { return this ? mSurface : NULL; }
 	int GetWidth() { return gr_get_width(this ? mSurface : NULL); }
 	int GetHeight() { return gr_get_height(this ? mSurface : NULL); }
-
-	virtual bool loadedOK() { return mSurface != NULL; }
 
 protected:
 	gr_surface mSurface;
@@ -83,7 +82,6 @@ public:
 	int GetWidth() { return gr_get_width(this ? GetResource() : NULL); }
 	int GetHeight() { return gr_get_height(this ? GetResource() : NULL); }
 	int GetResourceCount() { return mSurfaces.size(); }
-	virtual bool loadedOK() { return !mSurfaces.empty(); }
 
 protected:
 	std::vector<gr_surface> mSurfaces;
@@ -92,15 +90,21 @@ protected:
 class ResourceManager
 {
 public:
-	ResourceManager(xml_node<>* resList, ZipArchive* pZip);
+	ResourceManager();
 	virtual ~ResourceManager();
 	void LoadResources(xml_node<>* resList, ZipArchive* pZip);
 
 public:
-	Resource* FindResource(std::string name);
+	FontResource* FindFont(const std::string& name) const;
+	ImageResource* FindImage(const std::string& name) const;
+	AnimationResource* FindAnimation(const std::string& name) const;
+	std::string FindString(const std::string& name) const;
 
 private:
-	std::vector<Resource*> mResources;
+	std::vector<FontResource*> mFonts;
+	std::vector<ImageResource*> mImages;
+	std::vector<AnimationResource*> mAnimations;
+	std::map<std::string, std::string> mStrings;
 };
 
 #endif  // _RESOURCE_HEADER

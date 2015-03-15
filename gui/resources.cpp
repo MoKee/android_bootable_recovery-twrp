@@ -4,22 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <sys/reboot.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
-#include <time.h>
 #include <unistd.h>
-#include <stdlib.h>
 
 #include <string>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
 
+#include "../minzip/Zip.h"
 extern "C" {
 #include "../twcommon.h"
 #include "../minuitwrp/minui.h"
@@ -258,41 +250,66 @@ AnimationResource::~AnimationResource()
 	mSurfaces.clear();
 }
 
-Resource* ResourceManager::FindResource(std::string name)
+FontResource* ResourceManager::FindFont(const std::string& name) const
 {
-	std::vector<Resource*>::iterator iter;
-
-	for (iter = mResources.begin(); iter != mResources.end(); iter++)
-	{
-		if (name == (*iter)->GetName())
-			return (*iter);
-	}
+	for (std::vector<FontResource*>::const_iterator it = mFonts.begin(); it != mFonts.end(); ++it)
+		if (name == (*it)->GetName())
+			return *it;
 	return NULL;
 }
 
-ResourceManager::ResourceManager(xml_node<>* resList, ZipArchive* pZip)
+ImageResource* ResourceManager::FindImage(const std::string& name) const
 {
-	LoadResources(resList, pZip);
+	for (std::vector<ImageResource*>::const_iterator it = mImages.begin(); it != mImages.end(); ++it)
+		if (name == (*it)->GetName())
+			return *it;
+	return NULL;
+}
+
+AnimationResource* ResourceManager::FindAnimation(const std::string& name) const
+{
+	for (std::vector<AnimationResource*>::const_iterator it = mAnimations.begin(); it != mAnimations.end(); ++it)
+		if (name == (*it)->GetName())
+			return *it;
+	return NULL;
+}
+
+std::string ResourceManager::FindString(const std::string& name) const
+{
+	std::map<std::string, std::string>::const_iterator it = mStrings.find(name);
+	if (it != mStrings.end())
+		return it->second;
+	return "[" + name + ("]");
+}
+
+ResourceManager::ResourceManager()
+{
 }
 
 void ResourceManager::LoadResources(xml_node<>* resList, ZipArchive* pZip)
 {
-	xml_node<>* child;
-
 	if (!resList)
 		return;
-	child = resList->first_node("resource");
-	while (child != NULL)
-	{
-		xml_attribute<>* attr = child->first_attribute("type");
-		if (!attr)
-			break;
 
-		Resource* res = NULL;
-		std::string type = attr->value();
+	for (xml_node<>* child = resList->first_node(); child; child = child->next_sibling())
+	{
+		std::string type = child->name();
+		if (type == "resource") {
+			// legacy format : <resource type="...">
+			xml_attribute<>* attr = child->first_attribute("type");
+			type = attr ? attr->value() : "*unspecified*";
+		}
+
+		bool error = false;
 		if (type == "font")
 		{
-			res = new FontResource(child, pZip);
+			FontResource* res = new FontResource(child, pZip);
+			if (res->GetResource())
+				mFonts.push_back(res);
+			else {
+				error = true;
+				delete res;
+			}
 		}
 		else if (type == "image")
 		{
@@ -300,7 +317,13 @@ void ResourceManager::LoadResources(xml_node<>* resList, ZipArchive* pZip)
 			xml_attribute<>* retain_aspect_ratio = child->first_attribute("retainaspect");
 			if (retain_aspect_ratio)
 				retain = 1; // the value does not matter, if retainaspect is present, we assume that we want to retain it
-			res = new ImageResource(child, pZip, retain);
+			ImageResource* res = new ImageResource(child, pZip, retain);
+			if (res->GetResource())
+				mImages.push_back(res);
+			else {
+				error = true;
+				delete res;
+			}
 		}
 		else if (type == "animation")
 		{
@@ -308,14 +331,28 @@ void ResourceManager::LoadResources(xml_node<>* resList, ZipArchive* pZip)
 			xml_attribute<>* retain_aspect_ratio = child->first_attribute("retainaspect");
 			if (retain_aspect_ratio)
 				retain = 1; // the value does not matter, if retainaspect is present, we assume that we want to retain it
-			res = new AnimationResource(child, pZip, retain);
+			AnimationResource* res = new AnimationResource(child, pZip, retain);
+			if (res->GetResourceCount())
+				mAnimations.push_back(res);
+			else {
+				error = true;
+				delete res;
+			}
+		}
+		else if (type == "string")
+		{
+			if (xml_attribute<>* attr = child->first_attribute("name"))
+				mStrings[attr->value()] = child->value();
+			else
+				error = true;
 		}
 		else
 		{
 			LOGERR("Resource type (%s) not supported.\n", type.c_str());
+			error = true;
 		}
 
-		if (res == NULL || !res->loadedOK())
+		if (error)
 		{
 			std::string res_name;
 			if (child->first_attribute("name"))
@@ -327,24 +364,18 @@ void ResourceManager::LoadResources(xml_node<>* resList, ZipArchive* pZip)
 				LOGERR("Resource (%s)-(%s) failed to load\n", type.c_str(), res_name.c_str());
 			} else
 				LOGERR("Resource type (%s) failed to load\n", type.c_str());
-
-			delete res;
 		}
-		else
-		{
-			mResources.push_back(res);
-		}
-
-		child = child->next_sibling("resource");
 	}
 }
 
 ResourceManager::~ResourceManager()
 {
-	std::vector<Resource*>::iterator iter;
+	for (std::vector<FontResource*>::iterator it = mFonts.begin(); it != mFonts.end(); ++it)
+		delete *it;
 
-	for (iter = mResources.begin(); iter != mResources.end(); iter++)
-		delete *iter;
+	for (std::vector<ImageResource*>::iterator it = mImages.begin(); it != mImages.end(); ++it)
+		delete *it;
 
-	mResources.clear();
+	for (std::vector<AnimationResource*>::iterator it = mAnimations.begin(); it != mAnimations.end(); ++it)
+		delete *it;
 }
