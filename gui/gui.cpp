@@ -342,18 +342,22 @@ void InputHandler::process_EV_ABS(input_event& ev)
 
 	if (ev.code == 0)
 	{
+#ifndef TW_USE_KEY_CODE_TOUCH_SYNC
 		if (state == AS_IN_ACTION_AREA)
 		{
 			LOGEVENT("TOUCH_RELEASE: %d,%d\n", x, y);
 			PageManager::NotifyTouch(TOUCH_RELEASE, x, y);
 		}
 		touch_status = TS_NONE;
+#endif
 	}
 	else
 	{
 		if (!touch_status)
 		{
+#ifndef TW_USE_KEY_CODE_TOUCH_SYNC
 			doTouchStart();
+#endif
 		}
 		else
 		{
@@ -403,6 +407,13 @@ void InputHandler::process_EV_KEY(input_event& ev)
 			kb->KeyUp(KEY_BACK);
 	} else if (ev.value != 0) {
 		// This is a key press
+#ifdef TW_USE_KEY_CODE_TOUCH_SYNC
+		if (ev.code == TW_USE_KEY_CODE_TOUCH_SYNC) {
+			LOGEVENT("key code %i key press == touch start %i %i\n", TW_USE_KEY_CODE_TOUCH_SYNC, x, y);
+			doTouchStart();
+			return;
+		}
+#endif
 		if (kb->KeyDown(ev.code)) {
 			// Key repeat is enabled for this key
 			key_status = KS_KEY_PRESSED;
@@ -417,6 +428,12 @@ void InputHandler::process_EV_KEY(input_event& ev)
 		kb->KeyUp(ev.code);
 		key_status = KS_NONE;
 		touch_status = TS_NONE;
+#ifdef TW_USE_KEY_CODE_TOUCH_SYNC
+		if (ev.code == TW_USE_KEY_CODE_TOUCH_SYNC) {
+			LOGEVENT("key code %i key release == touch release %i %i\n", TW_USE_KEY_CODE_TOUCH_SYNC, x, y);
+			PageManager::NotifyTouch(TOUCH_RELEASE, x, y);
+		}
+#endif
 	}
 }
 
@@ -717,6 +734,7 @@ int gui_changePage(std::string newPage)
 
 int gui_changeOverlay(std::string overlay)
 {
+	LOGINFO("Set overlay: '%s'\n", overlay.c_str());
 	PageManager::ChangeOverlay(overlay);
 	gForceRender.set_value(1);
 	return 0;
@@ -775,7 +793,7 @@ extern "C" int gui_init(void)
 
 	if (res_create_surface(curtain_path.c_str(), &source_Surface))
 	{
-		printf("Unable to locate '%s'\nDid you set a DEVICE_RESOLUTION in your config files?\n", curtain_path.c_str());
+		printf("Unable to locate '%s'\nDid you set a TW_THEME in your config files?\n", curtain_path.c_str());
 		return -1;
 	}
 	if (gr_get_width(source_Surface) != gr_fb_width() || gr_get_height(source_Surface) != gr_fb_height()) {

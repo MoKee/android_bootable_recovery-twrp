@@ -17,7 +17,7 @@
 #ifndef _VARIABLES_HEADER_
 #define _VARIABLES_HEADER_
 
-#define TW_VERSION_STR              "2.8.5.0"
+#define TW_VERSION_STR              "2.8.6.0"
 
 #define TW_USE_COMPRESSION_VAR      "tw_use_compression"
 #define TW_FILENAME                 "tw_filename"
@@ -146,6 +146,7 @@
 #define TW_DOWNLOAD_MODE            "tw_download_mode"
 #define TW_IS_ENCRYPTED             "tw_is_encrypted"
 #define TW_IS_DECRYPTED             "tw_is_decrypted"
+#define TW_CRYPTO_PWTYPE            "tw_crypto_pwtype"
 #define TW_HAS_CRYPTO               "tw_has_crypto"
 #define TW_CRYPTO_PASSWORD          "tw_crypto_password"
 #define TW_DATA_BLK_DEVICE          "tw_data_blk_device"  // Original block device - not decrypted

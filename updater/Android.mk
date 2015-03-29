@@ -46,6 +46,19 @@ LOCAL_STATIC_LIBRARIES += libflashutils libmmcutils libbmlutils
 LOCAL_STATIC_LIBRARIES += libmincrypttwrp libbz
 LOCAL_STATIC_LIBRARIES += libcutils liblog libstdc++ libc
 LOCAL_STATIC_LIBRARIES += libselinux
+tune2fs_static_libraries := \
+ libext2_com_err \
+ libext2_blkid \
+ libext2_quota \
+ libext2_uuid_static \
+ libext2_e2p \
+ libext2fs
+ifneq ($(wildcard external/e2fsprogs/misc/tune2fs.h),)
+    LOCAL_STATIC_LIBRARIES += libtune2fs $(tune2fs_static_libraries)
+    LOCAL_CFLAGS += -DHAVE_LIBTUNE2FS
+endif
+
+LOCAL_C_INCLUDES += external/e2fsprogs/misc
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/..
 
 # Each library in TARGET_RECOVERY_UPDATER_LIBS should have a function
