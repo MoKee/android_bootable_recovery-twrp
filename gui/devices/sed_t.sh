@@ -28,7 +28,7 @@ sed -i "s/^[ \t]*<\/pages>/\n\t\t<page name=\"language_reload\">\n\
 \n\
 			<object type=\"listbox\">\n\
 				<highlight color=\"%fileselector_highlight_color%\" \/>\n\
-                                <placement x=\"%listbox_x%\" y=\"%row1_header_y%\" w=\"%listbox_width%\" h=\"130\" \/>\n\
+                                <placement x=\"%listbox_x%\" y=\"%row1_header_y%\" w=\"%listbox_width%\" h=\"135\" \/>\n\
 				<header background=\"%fileselector_header_background%\" textcolor=\"%fileselector_header_textcolor%\" separatorcolor=\"%fileselector_header_separatorcolor%\" separatorheight=\"%fileselector_header_separatorheight%\" \/>\n\
 				<fastscroll linecolor=\"%fastscroll_linecolor%\" rectcolor=\"%fastscroll_rectcolor%\" w=\"%fastscroll_w%\" linew=\"%fastscroll_linew%\" rectw=\"%fastscroll_rectw%\" recth=\"%fastscroll_recth%\" \/>\n\
                                 <text id=\"language_select\">Select Language<\/text>\n\
