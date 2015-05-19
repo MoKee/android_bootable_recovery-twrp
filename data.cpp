@@ -764,7 +764,7 @@ void DataManager::SetDefaultValues()
 	mValues.insert(make_pair(TW_SDEXT_SIZE, make_pair("512", 1)));
 	mValues.insert(make_pair(TW_SWAP_SIZE, make_pair("32", 1)));
 	mValues.insert(make_pair(TW_SDPART_FILE_SYSTEM, make_pair("ext3", 1)));
-	mValues.insert(make_pair(TW_TIME_ZONE_GUISEL, make_pair("CST6;CDT,M3.2.0,M11.1.0", 1)));
+	mValues.insert(make_pair(TW_TIME_ZONE_GUISEL, make_pair("TAIST-8;TAIDT", 1)));
 	mValues.insert(make_pair(TW_TIME_ZONE_GUIOFFSET, make_pair("0", 1)));
 	mValues.insert(make_pair(TW_TIME_ZONE_GUIDST, make_pair("1", 1)));
 	mValues.insert(make_pair(TW_ACTION_BUSY, make_pair("0", 0)));
@@ -852,6 +852,12 @@ void DataManager::SetDefaultValues()
 	mConstValues.insert(make_pair("tw_has_mtp", "0"));
 	mConstValues.insert(make_pair("tw_mtp_enabled", "0"));
 #endif
+
+    //en || zh-CN for languages
+    mValues.insert(make_pair("tw_lang_name", make_pair("zh-CN", 1)));
+    mValues.insert(make_pair("tw_lang_guisel",make_pair("zh-CN",1)));//for listbox
+
+
 
 	pthread_mutex_unlock(&m_valuesLock);
 }

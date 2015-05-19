@@ -998,7 +998,6 @@ main(int argc, char **argv) {
     }
 
     printf("Starting recovery (pid %d) on %s", getpid(), ctime(&start));
-
     load_volume_table();
     ensure_path_mounted(LAST_LOG_FILE);
     rotate_last_logs(KEEP_LOG_COUNT);
