@@ -232,6 +232,7 @@
 <text id="restore_select_package">Select Package to Restore:</text>
 <text id="timezone_select">Select Time Zone</text>
 <text id="select_zip">Select Zip to Install</text>
+
 <text id="set_backup_name">Set Backup Name</text>
 <text id="timezone_set">Set Time Zone</text>
 <text id="settings">Settings</text>
@@ -330,6 +331,25 @@
 <text id="no_encrypt">No Encryption</text>
 <text id="using_encrypt">Using Encryption</text>
 <text id="selpackage2restore">Select Package to Restore:</text>
+<text id="storage_dis">Storage: %tw_storage_display_name% (%tw_storage_free_size% MB)</text>
+<text id="sel_img2Ins">Select Image to Install</text>
+<text id="not_inc_int_sto">(not including internal storage)</text>
+<text id="Invpartsel">Invalid partition selection</text>
+<text id="Rep_or_changeFileSys">Repair or Change File System</text>
+<text id="format_data_text1">Format Data will wipe all of your apps,</text>
+<text id="format_data_text2">backups, pictures, videos, media, and</text>
+<text id="format_data_text3">removes encryption on internal storage.</text>
+<text id="format_data_text4">This cannot be undone. Press back to cancel.</text>
+<text id="format_data_text5">Type yes to continue.</text>
+<text id="dis_free_spcace_check">Disable Free Space Check.</text>
+<text id="Fix_permi_need">Note: Fixing permissions is rarely needed.</text>
+<text id="fix_selinux_con">Also fix SELinux contexts</text>
+<text id="text_fix_selinux_con_cause">Fixing SELinux contexts may cause</text>
+<text id="text_fix_selinux_con_cause_1">your device to not boot properly.</text>
+<text id="swipe2fixpermi">Swipe to Fix Permissions</text>
+<text id="enable_mtp">Enable MTP</text>
+<text id="disable_mtp">Disable MTP</text>
+<text id="use_24hour_clock">Use 24-hour clock.</text>
 <action id="text_copyinglog2sd" function="set">tw_action_text1=Copying Log to SD Card...</action>
 <action id="text_copylogcomplete" function="set">tw_complete_text1=Log Copy Complete</action>
 <action id="text_wipeselparts" function="set">tw_text1=Wipe Selected Partition(s)?</action>
