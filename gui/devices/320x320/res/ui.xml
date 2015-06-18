@@ -64,6 +64,7 @@
 		<variable name="row4_y" value="240" />
 		<variable name="row_queue_y" value="184" />
 		<variable name="row1_header_y" value="0" />
+                <variable name="row1_header2_y" value="16" />
 		<variable name="row1_text_y" value="22" />
 		<variable name="row2_text_y" value="44" />
 		<variable name="row3_text_y" value="66" />
@@ -181,6 +182,7 @@
 		<variable name="button_fill_small_width" value="36" />
 		<variable name="button_fill_main_height" value="44" />
 		<variable name="button_fill_half_height" value="22" />
+                <variable name="partitionlist_header_height" value="15" />
 		<variable name="button_fill_quarter_height" value="22" />
 		<variable name="button_refresh_x" value="152" />
 		<variable name="backup_list_y" value="26" />

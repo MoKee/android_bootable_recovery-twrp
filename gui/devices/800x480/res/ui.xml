@@ -191,6 +191,7 @@
 		<variable name="button_fill_main_width" value="367" />
 		<variable name="button_fill_main_height" value="120" />
 		<variable name="button_fill_half_height" value="40" />
+                <variable name="partitionlist_header_height" value="20" />
 		<variable name="button_fill_quarter_height" value="30" />
 		<variable name="button_full_center_x" value="200" />
 		<variable name="flash_list_height" value="140" />
