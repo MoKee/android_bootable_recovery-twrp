@@ -44,7 +44,7 @@ GUIFileSelector::GUIFileSelector(xml_node<>* node) : GUIScrollList(node)
 	mShowFolders = mShowFiles = mShowNavFolders = 1;
 	mUpdate = 0;
 	mPathVar = "cwd";
-       updateFileList = false;
+	updateFileList = false;
 
 	// Load filter for filtering files (e.g. *.zip for only zips)
 	child = FindNode(node, "filter");
@@ -61,7 +61,7 @@ GUIFileSelector::GUIFileSelector(xml_node<>* node) : GUIScrollList(node)
 		attr = child->first_attribute("nav");
 		if (attr)
 			mShowNavFolders = atoi(attr->value());
-    }
+	}
 
 	// Handle the path variable
 	child = FindNode(node, "path");

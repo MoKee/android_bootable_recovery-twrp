@@ -1332,23 +1332,18 @@
 		<page name="backup">
 			<object type="template" name="header" />
 
-                        <object type="button" style="fillbutton">
-                                <placement x="%col1_x%" y="%row1_header_y%" w="%button_fill_full_width%" h="%partitionlist_header_height%" />
-                                <text>Backup Name: %tw_backup_name%</text>
-
-                              <actions>
-                                        <action function="set">tw_fileexists=0</action>
-                                        <action function="page">backupname1</action>
-                                </actions>
-                        </object>
-
-                        <object type="button" style="fillbutton">
-                                <placement x="%col1_x%" y="%row1_header2_y%" w="%button_fill_full_width%" h="%partitionlist_header_height%" />
-                                 <text>Select Partitions to Back Up:</text>
-                        </object>
+			<object type="button" style="fillbutton">
+				<placement x="%col1_x%" y="%row1_header_y%" w="%button_fill_full_width%" h="%button_fill_quarter_height%" />
+				<text>Backup Name: %tw_backup_name%</text>
+				<actions>
+					<action function="set">tw_fileexists=0</action>
+					<action function="page">backupname1</action>
+				</actions>
+			</object>
 
 			<object type="partitionlist">
 				<placement x="%listbox_x%" y="%row2_text_y%" w="%listbox_width%" h="%backup_list_height%" />
+				<text>Select Partitions to Back Up:</text>
 				<data name="tw_backup_list" />
 				<listtype name="backup" />
 			</object>
