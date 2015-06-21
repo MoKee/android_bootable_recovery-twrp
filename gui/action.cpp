@@ -995,15 +995,19 @@ int GUIAction::flash(std::string arg)
 	// We're going to jump to this page first, like a loading page
 	gui_changePage(arg);
 	for (i=0; i<zip_queue_index; i++) {
+		string zip_path = zip_queue[i];
+		size_t slashpos = zip_path.find_last_of('/');
+		string zip_filename = (slashpos == string::npos) ? zip_path : zip_path.substr(slashpos + 1);
 		operation_start("Flashing");
-		DataManager::SetValue("tw_filename", zip_queue[i]);
+		DataManager::SetValue("tw_filename", zip_path);
+		DataManager::SetValue("tw_file", zip_filename);
 		DataManager::SetValue(TW_ZIP_INDEX, (i + 1));
 
 		TWFunc::SetPerformanceMode(true);
-		ret_val = flash_zip(zip_queue[i], &wipe_cache);
+		ret_val = flash_zip(zip_path, &wipe_cache);
 		TWFunc::SetPerformanceMode(false);
 		if (ret_val != 0) {
-			gui_print("Error flashing zip '%s'\n", zip_queue[i].c_str());
+			gui_print("Error flashing zip '%s'\n", zip_path.c_str());
 			ret_val = 1;
 			break;
 		}
@@ -1507,7 +1511,7 @@ int GUIAction::adbsideload(std::string arg)
 			LOGINFO("Waiting for child sideload process to exit.\n");
 			waitpid(sideload_child_pid, &status, 0);
 		}
-
+		property_set("ctl.start", "adbd");
 		TWFunc::Toggle_MTP(mtp_was_enabled);
 		reinject_after_flash();
 		operation_end(ret);
@@ -1541,6 +1545,8 @@ int GUIAction::adbsideloadcancel(std::string arg)
 
 int GUIAction::openrecoveryscript(std::string arg)
 {
+	int op_status = 1;
+
 	operation_start("OpenRecoveryScript");
 	if (simulate) {
 		simulate_progress_bar();
@@ -1561,6 +1567,7 @@ int GUIAction::openrecoveryscript(std::string arg)
 			gui_print("Processing OpenRecoveryScript file...\n");
 			if (OpenRecoveryScript::run_script_file() == 0) {
 				reboot = 1;
+				op_status = 0;
 			}
 		}
 		if (reboot) {
@@ -1568,11 +1575,11 @@ int GUIAction::openrecoveryscript(std::string arg)
 			TWFunc::Disable_Stock_Recovery_Replace();
 			usleep(2000000); // Sleep for 2 seconds before rebooting
 			TWFunc::tw_reboot(rb_system);
+			usleep(5000000); // Sleep for 5 seconds to allow reboot to occur
 		} else {
 			DataManager::SetValue("tw_page_done", 1);
 		}
-		operation_end(1);
-		return 0;
+		operation_end(op_status);
 	}
 	return 0;
 }
@@ -1798,7 +1805,7 @@ int GUIAction::mountsystemtoggle(std::string arg)
 	} else {
 		TWPartition* Part = PartitionManager.Find_Partition_By_Path("/system");
 		if (Part) {
-			if (DataManager::GetIntValue("tw_mount_system_ro")) {
+			if (arg == "0") {
 				DataManager::SetValue("tw_mount_system_ro", 0);
 				Part->Change_Mount_Read_Only(false);
 			} else {
