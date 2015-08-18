@@ -243,7 +243,15 @@ GUIAction::GUIAction(xml_node<>* node)
 		if (!attr)  return;
 
 		action.mFunction = attr->value();
-		action.mArg = child->value();
+		//for multi languaegs support 
+		xml_attribute<>* id = child->first_attribute("id");
+		if (id)
+		     action.mArg = LanguageManager::parse(id->value());
+ 
+	        if (action.mArg  == "")
+	        	action.mArg = child->value();
+
+		//action.mArg = child->value();
 		mActions.push_back(action);
 
 		child = child->next_sibling("action");
