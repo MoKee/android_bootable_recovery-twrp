@@ -35,7 +35,7 @@ GUIKeyboard::GUIKeyboard(xml_node<>* node)
 	: GUIObject(node)
 {
 	int layoutindex, rowindex, keyindex, Xindex, Yindex, keyHeight = 0, keyWidth = 0;
-	rowY = colX = -1;
+	currentKey = NULL;
 	highlightRenderCount = 0;
 	hasHighlight = hasCapsHighlight = false;
 	char resource[10], layout[8], row[5], key[6], longpress[7];
@@ -53,12 +53,35 @@ GUIKeyboard::GUIKeyboard(xml_node<>* node)
 	mRendered = false;
 	currentLayout = 1;
 	CapsLockOn = false;
-	KeyboardHeight = KeyboardWidth = 0;
 
 	if (!node)  return;
 
 	mHighlightColor = LoadAttrColor(FindNode(node, "highlight"), "color", &hasHighlight);
 	mCapsHighlightColor = LoadAttrColor(FindNode(node, "capshighlight"), "color", &hasCapsHighlight);
+
+	child = FindNode(node, "keymargin");
+	mKeyMarginX = LoadAttrIntScaleX(child, "x", 0);
+	mKeyMarginY = LoadAttrIntScaleY(child, "y", 0);
+
+	child = FindNode(node, "background");
+	mBackgroundColor = LoadAttrColor(child, "color", COLOR(32,32,32,255));
+
+	child = FindNode(node, "key-alphanumeric");
+	mFont = PageManager::GetResources()->FindFont(LoadAttrString(child, "font", "keylabel"));
+	mFontColor = LoadAttrColor(child, "textcolor", COLOR(255,255,255,255));
+	mKeyColorAlphanumeric = LoadAttrColor(child, "color", COLOR(0,0,0,0));
+
+	child = FindNode(node, "key-other");
+	mSmallFont = PageManager::GetResources()->FindFont(LoadAttrString(child, "font", "keylabel-small"));
+	mFontColorSmall = LoadAttrColor(child, "textcolor", COLOR(192,192,192,255));
+	mKeyColorOther = LoadAttrColor(child, "color", COLOR(0,0,0,0));
+
+	child = FindNode(node, "longpress");
+	mLongpressFont = PageManager::GetResources()->FindFont(LoadAttrString(child, "font", "keylabel-longpress"));
+	mLongpressFontColor = LoadAttrColor(child, "textcolor", COLOR(128,128,128,255));
+	LoadPlacement(child, &longpressOffsetX, &longpressOffsetY);
+
+	LoadKeyLabels(node, 0); // load global key labels
 
 	// compatibility ugliness: resources should be specified in the layouts themselves instead
 	// Load the images for the different layouts
@@ -80,8 +103,8 @@ GUIKeyboard::GUIKeyboard(xml_node<>* node)
 	// Check the first image to get height and width
 	if (layouts[0].keyboardImg && layouts[0].keyboardImg->GetResource())
 	{
-		KeyboardWidth = layouts[0].keyboardImg->GetWidth();
-		KeyboardHeight = layouts[0].keyboardImg->GetHeight();
+		mRenderW = layouts[0].keyboardImg->GetWidth();
+		mRenderH = layouts[0].keyboardImg->GetHeight();
 	}
 
 	// Load all of the layout maps
@@ -94,6 +117,8 @@ GUIKeyboard::GUIKeyboard(xml_node<>* node)
 			LOGERR("Too many layouts defined in keyboard.\n");
 			return;
 		}
+
+		LoadKeyLabels(keylayout, layoutindex); // load per-layout key labels
 
 		Layout& lay = layouts[layoutindex - 1];
 
@@ -170,8 +195,8 @@ GUIKeyboard::GUIKeyboard(xml_node<>* node)
 
 	int x, y;
 	// Load the placement
-	LoadPlacement(FindNode(node, "placement"), &x, &y);
-	SetRenderPos(x, y, KeyboardWidth, KeyboardHeight);
+	LoadPlacement(FindNode(node, "placement"), &x, &y, &mRenderW, &mRenderH);
+	SetRenderPos(x, y, mRenderW, mRenderH);
 	return;
 }
 
@@ -181,6 +206,7 @@ GUIKeyboard::~GUIKeyboard()
 
 int GUIKeyboard::ParseKey(const char* keyinfo, Key& key, int& Xindex, int keyWidth, bool longpress)
 {
+	key.layout = 0;
 	int keychar = 0;
 	if (strlen(keyinfo) == 1) {
 		// This is a single key, simple definition
@@ -222,6 +248,101 @@ int GUIKeyboard::ParseKey(const char* keyinfo, Key& key, int& Xindex, int keyWid
 	return 0;
 }
 
+void GUIKeyboard::LoadKeyLabels(xml_node<>* parent, int layout)
+{
+	for (xml_node<>* child = parent->first_node(); child; child = child->next_sibling()) {
+		std::string name = child->name();
+		if (name == "keylabel") {
+			std::string keydef = LoadAttrString(child, "key", "");
+			Key tempkey;
+			int dummyX;
+			if (ParseKey(keydef.c_str(), tempkey, dummyX, 0, false) == 0) {
+				KeyLabel keylabel;
+				keylabel.key = tempkey.key;
+				keylabel.layout_from = layout;
+				keylabel.layout_to = tempkey.layout;
+				keylabel.text = LoadAttrString(child, "text", "");
+				keylabel.image = LoadAttrImage(child, "resource");
+				mKeyLabels.push_back(keylabel);
+			} else {
+				LOGERR("Ignoring invalid keylabel in layout %d: '%s'.\n", layout, keydef.c_str());
+			}
+		}
+	}
+}
+
+void GUIKeyboard::DrawKey(Key& key, int keyX, int keyY, int keyW, int keyH)
+{
+	unsigned char keychar = key.key;
+	if (!keychar)
+		return;
+
+	// key background
+	COLOR& c = (keychar >= 32 && keychar < 127) ? mKeyColorAlphanumeric : mKeyColorOther;
+	gr_color(c.red, c.green, c.blue, c.alpha);
+	keyX += mKeyMarginX;
+	keyY += mKeyMarginY;
+	keyW -= mKeyMarginX * 2;
+	keyH -= mKeyMarginY * 2;
+	gr_fill(keyX, keyY, keyW, keyH);
+
+	// key label
+	FontResource* labelFont = mFont;
+	string labelText;
+	ImageResource* labelImage = NULL;
+	if (keychar > 32 && keychar < 127) {
+		labelText = (char) keychar;
+		gr_color(mFontColor.red, mFontColor.green, mFontColor.blue, mFontColor.alpha);
+	}
+	else {
+		// search for a special key label
+		for (std::vector<KeyLabel>::iterator it = mKeyLabels.begin(); it != mKeyLabels.end(); ++it) {
+			if (it->layout_from > 0 && it->layout_from != currentLayout)
+				continue; // this label is for another layout
+			if (it->key == key.key && it->layout_to == key.layout)
+			{
+				// found a label
+				labelText = it->text;
+				labelImage = it->image;
+				break;
+			}
+		}
+		labelFont = mSmallFont;
+		gr_color(mFontColorSmall.red, mFontColorSmall.green, mFontColorSmall.blue, mFontColorSmall.alpha);
+	}
+
+	if (labelImage)
+	{
+		int w = labelImage->GetWidth();
+		int h = labelImage->GetHeight();
+		int x = keyX + (keyW - w) / 2;
+		int y = keyY + (keyH - h) / 2;
+		gr_blit(labelImage->GetResource(), 0, 0, w, h, x, y);
+	}
+	else if (!labelText.empty())
+	{
+		void* fontResource = labelFont->GetResource();
+		int textW = gr_measureEx(labelText.c_str(), fontResource);
+		int textH = labelFont->GetHeight();
+		int textX = keyX + (keyW - textW) / 2;
+		int textY = keyY + (keyH - textH) / 2;
+		gr_textEx(textX, textY, labelText.c_str(), fontResource);
+	}
+
+	// longpress key label (only if font is defined)
+	keychar = key.longpresskey;
+	if (keychar > 32 && keychar < 127 && mLongpressFont->GetResource()) {
+		void* fontResource = mLongpressFont->GetResource();
+		gr_color(mLongpressFontColor.red, mLongpressFontColor.green, mLongpressFontColor.blue, mLongpressFontColor.alpha);
+		string text(1, keychar);
+		int textH = mLongpressFont->GetHeight();
+		int textW = gr_measureEx(text.c_str(), fontResource);
+		int textX = keyX + keyW - longpressOffsetX - textW;
+		int textY = keyY + longpressOffsetY;
+		gr_textEx(textX, textY, text.c_str(), fontResource);
+	}
+}
+
 int GUIKeyboard::Render(void)
 {
 	if (!isConditionTrue())
@@ -232,53 +353,55 @@ int GUIKeyboard::Render(void)
 
 	Layout& lay = layouts[currentLayout - 1];
 
+	bool drawKeys = false;
 	if (lay.keyboardImg && lay.keyboardImg->GetResource())
-		gr_blit(lay.keyboardImg->GetResource(), 0, 0, KeyboardWidth, KeyboardHeight, mRenderX, mRenderY);
+		// keyboard is image based
+		gr_blit(lay.keyboardImg->GetResource(), 0, 0, mRenderW, mRenderH, mRenderX, mRenderY);
+	else {
+		// keyboard is software drawn
+		// fill background
+		gr_color(mBackgroundColor.red, mBackgroundColor.green, mBackgroundColor.blue, mBackgroundColor.alpha);
+		gr_fill(mRenderX, mRenderY, mRenderW, mRenderH);
+		drawKeys = true;
+	}
 
-	// Draw highlight for capslock
-	if (hasCapsHighlight && lay.is_caps && CapsLockOn) {
-		gr_color(mCapsHighlightColor.red, mCapsHighlightColor.green, mCapsHighlightColor.blue, mCapsHighlightColor.alpha);
-		for (int indexy=0; indexy<MAX_KEYBOARD_ROWS; indexy++) {
-			for (int indexx=0; indexx<MAX_KEYBOARD_KEYS; indexx++) {
-				if ((int)lay.keys[indexy][indexx].key == KEYBOARD_LAYOUT && (int)lay.keys[indexy][indexx].layout == lay.revert_layout) {
-					int boxheight, boxwidth, x;
-					if (indexy == 0)
-						boxheight = lay.row_end_y[indexy];
-					else
-						boxheight = lay.row_end_y[indexy] - lay.row_end_y[indexy - 1];
-					if (indexx == 0) {
-						x = mRenderX;
-						boxwidth = lay.keys[indexy][indexx].end_x;
-					} else {
-						x = mRenderX + lay.keys[indexy][indexx - 1].end_x;
-						boxwidth = lay.keys[indexy][indexx].end_x - lay.keys[indexy][indexx - 1].end_x;
-					}
-					gr_fill(x, mRenderY + lay.row_end_y[indexy - 1], boxwidth, boxheight);
-				}
+	// draw keys
+	int y1 = 0;
+	for (int row = 0; row < MAX_KEYBOARD_ROWS; ++row) {
+		int rowY = mRenderY + y1;
+		int rowH = lay.row_end_y[row] - y1;
+		y1 = lay.row_end_y[row];
+		int x1 = 0;
+		for (int col = 0; col < MAX_KEYBOARD_KEYS; ++col) {
+			Key& key = lay.keys[row][col];
+			int keyY = rowY;
+			int keyH = rowH;
+			int keyX = mRenderX + x1;
+			int keyW = key.end_x - x1;
+			x1 = key.end_x;
+
+			// Draw key for software drawn keyboard
+			if (drawKeys)
+				DrawKey(key, keyX, keyY, keyW, keyH);
+
+			// Draw highlight for capslock
+			if (hasCapsHighlight && lay.is_caps && CapsLockOn && (int)key.key == KEYBOARD_LAYOUT && key.layout == lay.revert_layout) {
+				gr_color(mCapsHighlightColor.red, mCapsHighlightColor.green, mCapsHighlightColor.blue, mCapsHighlightColor.alpha);
+				gr_fill(keyX, keyY, keyW, keyH);
+			}
+
+			// Highlight current key
+			if (hasHighlight && &key == currentKey && highlightRenderCount != 0) {
+				gr_color(mHighlightColor.red, mHighlightColor.green, mHighlightColor.blue, mHighlightColor.alpha);
+				gr_fill(keyX, keyY, keyW, keyH);
 			}
 		}
 	}
 
-	if (hasHighlight && highlightRenderCount != 0) {
-		int boxheight, boxwidth, x;
-		if (rowY == 0)
-			boxheight = lay.row_end_y[rowY];
-		else
-			boxheight = lay.row_end_y[rowY] - lay.row_end_y[rowY - 1];
-		if (colX == 0) {
-			x = mRenderX;
-			boxwidth = lay.keys[rowY][colX].end_x;
-		} else {
-			x = mRenderX + lay.keys[rowY][colX - 1].end_x;
-			boxwidth = lay.keys[rowY][colX].end_x - lay.keys[rowY][colX - 1].end_x;
-		}
-		gr_color(mHighlightColor.red, mHighlightColor.green, mHighlightColor.blue, mHighlightColor.alpha);
-		gr_fill(x, mRenderY + lay.row_end_y[rowY - 1], boxwidth, boxheight);
-		if (highlightRenderCount > 0)
-			highlightRenderCount--;
-	} else
+	if (!hasHighlight || highlightRenderCount == 0)
 		mRendered = true;
-
+	else if (highlightRenderCount > 0)
+		highlightRenderCount--;
 	return 0;
 }
 
@@ -292,10 +415,7 @@ int GUIKeyboard::Update(void)
 
 int GUIKeyboard::SetRenderPos(int x, int y, int w, int h)
 {
-	mRenderX = x;
-	mRenderY = y;
-	mRenderW = KeyboardWidth;
-	mRenderH = KeyboardHeight;
+	RenderObject::SetRenderPos(x, y, w, h);
 	SetActionPos(mRenderX, mRenderY, mRenderW, mRenderH);
 	return 0;
 }
@@ -326,8 +446,6 @@ GUIKeyboard::Key* GUIKeyboard::HitTestKey(int x, int y)
 		Key& key = lay.keys[row][col];
 		if (x1 <= relx && relx < key.end_x && key.key != 0) {
 			// This is the key that was pressed!
-			rowY = row;
-			colX = col;
 			return &key;
 		}
 		x1 = key.end_x;
@@ -338,7 +456,6 @@ GUIKeyboard::Key* GUIKeyboard::HitTestKey(int x, int y)
 int GUIKeyboard::NotifyTouch(TOUCH_STATE state, int x, int y)
 {
 	static int was_held = 0, startX = 0;
-	static Key* initial_key = 0;
 
 	if (!isConditionTrue())	 return -1;
 
@@ -347,8 +464,8 @@ int GUIKeyboard::NotifyTouch(TOUCH_STATE state, int x, int y)
 	case TOUCH_START:
 		was_held = 0;
 		startX = x;
-		initial_key = HitTestKey(x, y);
-		if (initial_key)
+		currentKey = HitTestKey(x, y);
+		if (currentKey)
 			highlightRenderCount = -1;
 		else
 			highlightRenderCount = 0;
@@ -359,14 +476,14 @@ int GUIKeyboard::NotifyTouch(TOUCH_STATE state, int x, int y)
 		break;
 
 	case TOUCH_RELEASE:
-		if (x < startX - (KeyboardWidth * 0.5)) {
+		if (x < startX - (mRenderW * 0.5)) {
 			if (highlightRenderCount != 0) {
 				highlightRenderCount = 0;
 				mRendered = false;
 			}
 			PageManager::NotifyKeyboard(KEYBOARD_SWIPE_LEFT);
 			return 0;
-		} else if (x > startX + (KeyboardWidth * 0.5)) {
+		} else if (x > startX + (mRenderW * 0.5)) {
 			if (highlightRenderCount != 0) {
 				highlightRenderCount = 0;
 				mRendered = false;
@@ -377,7 +494,7 @@ int GUIKeyboard::NotifyTouch(TOUCH_STATE state, int x, int y)
 		// fall through
 	case TOUCH_HOLD:
 	case TOUCH_REPEAT:
-		if (!initial_key) {
+		if (!currentKey) {
 			if (highlightRenderCount != 0) {
 				highlightRenderCount = 0;
 				mRendered = false;
@@ -393,15 +510,16 @@ int GUIKeyboard::NotifyTouch(TOUCH_STATE state, int x, int y)
 			mRendered = false;
 		}
 
-		if (HitTestKey(x, y) != initial_key) {
+		if (HitTestKey(x, y) != currentKey) {
 			// We dragged off of the starting key
+			currentKey = NULL;
 			if (highlightRenderCount != 0) {
 				highlightRenderCount = 0;
 				mRendered = false;
 			}
 			return 0;
 		} else {
-			Key& key = *initial_key;
+			Key& key = *currentKey;
 			Layout& lay = layouts[currentLayout - 1];
 			if (state == TOUCH_RELEASE && was_held == 0) {
 				DataManager::Vibrate("tw_keyboard_vibrate");

@@ -58,6 +58,8 @@ GUIListBox::GUIListBox(xml_node<>* node) : GUIScrollList(node)
 		// Get the currently selected value for the list
 		DataManager::GetValue(mVariable, currentValue);
 	}
+	else
+		allowSelection = false;		// allows using listbox as a read-only list
 
 	// Get the data for the list
     //example: <listitem id="utc-9" name="(UTC -9) Alaska">AST9;ADT</listitem>
@@ -88,6 +90,12 @@ GUIListBox::GUIListBox(xml_node<>* node) : GUIScrollList(node)
 			data.selected = 1;
 		} else {
 			data.selected = 0;
+		}
+		data.action = NULL;
+		xml_node<>* action = child->first_node("action");
+		if (action) {
+			data.action = new GUIAction(action);
+			allowSelection = true;
 		}
 
 		mList.push_back(data);
@@ -171,9 +179,12 @@ void GUIListBox::NotifySelect(size_t item_selected)
 		mList.at(i).selected = 0;
 	}
 	if (item_selected < mList.size()) {
-		mList.at(item_selected).selected = 1;
-		string str = mList.at(item_selected).variableValue;
+		ListData& data = mList.at(item_selected);
+		data.selected = 1;
+		string str = data.variableValue;	// [check] should this set currentValue instead?
 		DataManager::SetValue(mVariable, str);
+		if (data.action)
+			data.action->doActions();
 	}
 	mUpdate = 1;
 }

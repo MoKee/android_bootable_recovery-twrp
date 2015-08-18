@@ -350,6 +350,8 @@
 <text id="enable_mtp">Enable MTP</text>
 <text id="disable_mtp">Disable MTP</text>
 <text id="use_24hour_clock">Use 24-hour clock.</text>
+<text id="wipe_enc">Wipe Encryption</text>
+<text id="MS_ReadOnly">Only mount system read-only</text>
 <action id="text_copyinglog2sd" function="set">tw_action_text1=Copying Log to SD Card...</action>
 <action id="text_copylogcomplete" function="set">tw_complete_text1=Log Copy Complete</action>
 <action id="text_wipeselparts" function="set">tw_text1=Wipe Selected Partition(s)?</action>
@@ -361,3 +363,50 @@
 <action id="text_dis_tdb" function="set">tw_text1=Disable truedualboot?</action>
 <action id="text_dis_tdb2" function="set">tw_action_text1=Disable truedualboot...</action>
 <action id="text_dis_tdb_off" function="set">tw_complete_text1=Truedualboot off</action>
+<text id="KeepSysRO">Keep System Read Only?</text>
+<text id="TWLeave">TWRP can leave your system partition unmodified</text>
+<text id="Easier4Update">to make it easier for you to take official updates.</text>
+<text id="unpreventstock">TWRP will be unable to prevent the stock ROM from</text>
+<text id="twShowMessage">replacing TWRP and will not offer to root your device.</text>
+<text id="InsZipOrAdb">Installing zips or performing adb operations may still</text>
+<text id="ModifySysPart">modify the system partition.</text>
+<text id="NeverShowIt">Never show this screen during boot again</text>
+<text id="KeepRO">Keep Read Only</text>
+<text id="Swip2AllowModi">Swipe to Allow Modifications</text>
+<text id="ok">OK</text>
+<text id="SelStorage">Select Storage:</text>
+<text id="PasswdNotMatch">Passwords Do Not Match</text>
+<text id="EncBackup">Encrypt your backup?</text>
+<text id="EnterPasswdAgain">Please Enter Password Again:</text>
+<text id="Backupenc">Backup Encrypted</text>
+<text id="EnterPasswd">Please Enter Your Password:</text>
+<text id="SelPart2FlashImg">Select Partition to Flash Image:</text>
+<text id="partOption">Partition Options for: %tw_partition_name%</text>
+<text id="MountPoint">Mount Point: %tw_partition_mount_point%</text>
+<text id="CurrFileSys">Current file system: %tw_partition_file_system%</text>
+<text id="pressYes">Present: Yes</text>
+<text id="PressNo">Present: No</text>
+<text id="RemoveYes">Removable: Yes</text>
+<text id="RemoveNo">Removable: No</text>
+<text id="PartSize">Size: %tw_partition_size%MB</text>
+<text id="UsedPartSize">Used: %tw_partition_used%MB</text>
+<text id="FreePartSize">Free: %tw_partition_free%MB</text>
+<text id="BackupPartSize">Backup Size: %tw_partition_backup_size%MB</text>
+<text id="Resize">Resize</text>
+<action id="text_Resize" function="set">tw_action_text1=Resizing...</action>
+<action id="text_Resize_complete" function="set">tw_complete_text1=Resize Complete</action>
+<action id="text_swipe2Resize" function="set">tw_slider_text=Swipe to Resize</action>
+<text id="Repair">Repair</text>
+<action id="text_repair_part" function="set">tw_text1=Repair %tw_partition_name%?</action>
+<action id="text_repairing" function="set">tw_action_text1=Repairing...</action>
+<action id="text_repair_complete" function="set">tw_complete_text1=Repair Complete</action>
+<action id="text_swipe2Repair" function="set">tw_slider_text=Swipe to Repair</action>
+<text id="ChangeFileSys">Change File System</text>
+<text id="ChangePartFileSys">Change file system for: %tw_partition_name%</text>
+<text id="MountPoint">Mount Point: %tw_partition_mount_point%</text>
+<text id="CurrentFileSys">Current file system: %tw_partition_file_system%</text>
+<text id="RomNotSupport">Some ROMs or kernels may not support some</text>
+<text id="ProcessCaution">file systems. Proceed with caution!</text>
+
+
+
