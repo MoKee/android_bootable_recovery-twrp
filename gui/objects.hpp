@@ -36,6 +36,9 @@ using namespace rapidxml;
 #include "../partitions.hpp"
 #include "placement.h"
 
+#include "languages.hpp"
+
+
 #ifndef TW_X_OFFSET
 #define TW_X_OFFSET 0
 #endif

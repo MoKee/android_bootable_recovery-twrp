@@ -228,6 +228,7 @@ else
     ALL_TOOLS := $(OUR_TOOLS)
 endif
 
+
 TOOLS_H := $(intermediates)/tools.h
 $(TOOLS_H): PRIVATE_TOOLS := $(ALL_TOOLS)
 $(TOOLS_H): PRIVATE_CUSTOM_TOOL = echo "/* file generated automatically */" > $@ ; for t in $(PRIVATE_TOOLS) ; do echo "TOOL($$t)" >> $@ ; done

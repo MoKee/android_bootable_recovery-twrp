@@ -155,7 +155,7 @@
 		<variable name="fastscroll_linew" value="3" />
 		<variable name="fastscroll_rectw" value="21" />
 		<variable name="fastscroll_recth" value="60" />
-		<variable name="listbox_x" value="5" />
+                <variable name="listbox_x" value="8" />
 		<variable name="listbox_width" value="1070" />
 		<variable name="listbox_tz_height" value="885" />
 		<variable name="listbox_background" value="#303030" />
@@ -254,7 +254,7 @@
 
 			<object type="text" color="%text_color%">
 				<font resource="font" />
-				<placement x="405" y="114" />
+				<placement x="430" y="114" />
 				<conditions>
 					<condition var1="tw_no_battery_percent" var2="0" />
 					<condition var1="tw_battery" op="&gt;" var2="0" />

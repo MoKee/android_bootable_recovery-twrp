@@ -922,7 +922,6 @@ main(int argc, char **argv) {
     }
 
     printf("Starting recovery (pid %d) on %s", getpid(), ctime(&start));
-
     load_volume_table();
     get_args(&argc, &argv);
 

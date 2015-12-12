@@ -61,18 +61,41 @@ GUIListBox::GUIListBox(xml_node<>* node) : GUIScrollList(node)
 		allowSelection = false;		// allows using listbox as a read-only list or menu
 
 	// Get the data for the list
+    //example: <listitem id="utc-9" name="(UTC -9) Alaska">AST9;ADT</listitem>
 	child = FindNode(node, "listitem");
 	if (!child) return;
 	while (child) {
 		ListItem item;
 
+        xml_attribute<>* id = child->first_attribute("id");
+                //if id not null , next_attribute -> name
+                if (id) {
+                attr = id->next_attribute("name");
+                //get translate from language.xml
+                item.displayName = LanguageManager::parse(id->value());
+                if(item.displayName == "")
+                    item.displayName = attr->value();
+               // LOGERR("DisplayName = %s\n",item.displayName.c_str());
+                } else {
+                           attr = child->first_attribute("name");
+                          if(attr)
+                              item.displayName = attr->value();
+                          LOGERR("DisplayName = %s\n",item.displayName.c_str());
+                       }
+                item.variableValue = gui_parse_text(child->value());
+                item.selected = (child->value() == currentValue);
+                item.action = NULL;
+        /*
 		attr = child->first_attribute("name");
 		if (!attr)
 			continue;
-		item.displayName = gui_parse_text(attr->value());
+        	//get translate from language.xml
+		item.displayName = LanguageManager::parse(attr->value());
+		//item.displayName = gui_parse_text(attr->value());
 		item.variableValue = gui_parse_text(child->value());
 		item.selected = (child->value() == currentValue);
 		item.action = NULL;
+      */
 		xml_node<>* action = child->first_node("action");
 		if (action) {
 			item.action = new GUIAction(action);
@@ -95,7 +118,7 @@ GUIListBox::GUIListBox(xml_node<>* node) : GUIScrollList(node)
 		mVisibleItems.push_back(mListItems.size()-1);
 
 		child = child->next_sibling("listitem");
-	}
+       }
 }
 
 GUIListBox::~GUIListBox()

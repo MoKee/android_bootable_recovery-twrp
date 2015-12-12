@@ -242,7 +242,15 @@ GUIAction::GUIAction(xml_node<>* node)
 		if (!attr)  return;
 
 		action.mFunction = attr->value();
-		action.mArg = child->value();
+		//for multi languaegs support 
+		xml_attribute<>* id = child->first_attribute("id");
+		if (id)
+		     action.mArg = LanguageManager::parse(id->value());
+ 
+	        if (action.mArg  == "")
+	        	action.mArg = child->value();
+
+		//action.mArg = child->value();
 		mActions.push_back(action);
 
 		child = child->next_sibling("action");
@@ -541,6 +549,11 @@ int GUIAction::page(std::string arg)
 
 int GUIAction::reload(std::string arg __unused)
 {
+	//multi languages support 
+	std::string SelectedLang;
+        DataManager::GetValue("tw_lang_guisel",SelectedLang);//Read the selected lang name to SelectedLang
+        DataManager::SetValue("tw_lang_name",SelectedLang);
+
 	PageManager::RequestReload();
 	// The actual reload is handled in pages.cpp in PageManager::RunReload()
 	// The reload will occur on the next Update or Render call and will
@@ -549,6 +562,7 @@ int GUIAction::reload(std::string arg __unused)
 	// GUI resources in the action thread while we attempt to render
 	// with those same resources in another thread.
 	return 0;
+
 }
 
 int GUIAction::readBackup(std::string arg __unused)
