@@ -894,6 +894,7 @@ void DataManager::SetDefaultValues()
     //en || zh-CN for languages
     mValues.insert(make_pair("tw_lang_name", make_pair("zh-CN", 1)));
     mValues.insert(make_pair("tw_lang_guisel",make_pair("zh-CN",1)));//for listbox
+	mValues.insert(make_pair("tw_never_show_choose_languages_page",make_pair("0",1)));
 
 
 

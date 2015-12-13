@@ -2664,14 +2664,14 @@
 				<text>ADB Sideload</text>
 				<action function="page">sideload</action>
 			</object>
-
+			
 			<object type="button">
-				<condition var1="tw_show_dumlock" var2="1" />
+				 <condition var1="tw_show_dumlock" var2="1" /> 
 				<placement x="%col2_x%" y="%row4_y%" />
 				<text>HTC Dumlock</text>
 				<action function="page">htcdumlock</action>
 			</object>
-
+			
 			<object type="button">
 				<condition var1="tw_has_injecttwrp" var2="1" />
 				<placement x="%col2_x%" y="%row4_y%" />

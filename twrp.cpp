@@ -342,6 +342,18 @@ int main(int argc, char **argv) {
 	PartitionManager.Disable_MTP();
 #endif
 
+
+// Check if the system is first boot 
+	// We need to choose the Default gui languages 
+	if (DataManager::GetIntValue("tw_never_show_choose_languages_page") == 0) {
+		if (gui_startPage("choosedeflanguage", 1, 1) != 0) {
+					LOGERR("Failed to start system_readonly GUI page.\n");
+				}
+	} else if (DataManager::GetIntValue("tw_never_show_choose_languages_page") == 1) {
+			// Do nothing, user selected to leave system read only
+	}
+
+/*
 #ifndef TW_OEM_BUILD
 	// Check if system has never been changed
 	TWPartition* sys = PartitionManager.Find_Partition_By_Path("/system");
@@ -367,7 +379,7 @@ int main(int argc, char **argv) {
 		}
 	}
 #endif
-
+*/
 	// Launch the main GUI
 	gui_start();
 

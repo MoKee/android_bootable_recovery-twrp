@@ -197,6 +197,7 @@ GUIAction::GUIAction(xml_node<>* node)
 		ADD_ACTION(cancelbackup);
 		ADD_ACTION(checkpartitionlifetimewrites);
 		ADD_ACTION(mountsystemtoggle);
+		ADD_ACTION(chooselanguages);
 
 		// remember actions that run in the caller thread
 		for (mapFunc::const_iterator it = mf.begin(); it != mf.end(); ++it)
@@ -549,11 +550,6 @@ int GUIAction::page(std::string arg)
 
 int GUIAction::reload(std::string arg __unused)
 {
-	//multi languages support 
-	std::string SelectedLang;
-        DataManager::GetValue("tw_lang_guisel",SelectedLang);//Read the selected lang name to SelectedLang
-        DataManager::SetValue("tw_lang_name",SelectedLang);
-
 	PageManager::RequestReload();
 	// The actual reload is handled in pages.cpp in PageManager::RunReload()
 	// The reload will occur on the next Update or Render call and will
@@ -564,6 +560,18 @@ int GUIAction::reload(std::string arg __unused)
 	return 0;
 
 }
+
+int GUIAction::chooselanguages(std::string arg __unused) 
+{
+	//multi languages support 
+	std::string SelectedLang;
+        DataManager::GetValue("tw_lang_guisel",SelectedLang);//Read the selected lang name to SelectedLang
+        DataManager::SetValue("tw_lang_name",SelectedLang);
+	PageManager::RequestReload();
+	PageManager::Update();
+	return 0;
+}
+
 
 int GUIAction::readBackup(std::string arg __unused)
 {

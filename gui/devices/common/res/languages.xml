@@ -264,7 +264,7 @@
 	<string id="backup_recovery">Recovery (%tw_backup_recovery_size% MB)</string>
 	<string id="htcdumlock_reflash_recovery">Reflash Recovery</string>
 	<string id="refresh_size">Refresh Sizes</string>
-	<string id="advanced_reload_theme">Theme & Languages</string>
+	<string id="advanced_reload_theme">Reload Theme </string>
 	<string id="restore_rename">Rename Backup</string>
 	<string id="filemanageroptions_rename_file">Rename File</string>
 	<string id="filemanageroptions_rename_folder">Rename Folder</string>
@@ -678,7 +678,7 @@
 	<string id="backup_recovery">Recovery (%tw_backup_recovery_size% MB)</string>
 	<string id="htcdumlock_reflash_recovery">重刷Recovery</string>
 	<string id="refresh_size">刷新大小</string>
-	<string id="advanced_reload_theme">重载主题 & 设置语言</string>
+	<string id="advanced_reload_theme">重载主题</string>
 	<string id="restore_rename">重命名备份文件</string>
 	<string id="filemanageroptions_rename_file">重命名文件</string>
 	<string id="filemanageroptions_rename_folder">重命名文件夹</string>

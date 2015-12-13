@@ -325,6 +325,7 @@ protected:
 	int getpartitiondetails(std::string arg);
 	int screenshot(std::string arg);
 	int setbrightness(std::string arg);
+	int chooselanguages(std::string arg);
 
 	// (originally) threaded actions
 	int fileexists(std::string arg);
