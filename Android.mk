@@ -574,4 +574,6 @@ ifeq ($(TW_INCLUDE_FB2PNG), true)
 endif
 
 commands_recovery_local_path :=
+
 endif 
+
