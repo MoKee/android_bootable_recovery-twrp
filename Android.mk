@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ifneq ($(BUILD_TWRP),)
-
 LOCAL_PATH := $(call my-dir)
-
 
 ifdef project-path-for
     ifeq ($(LOCAL_PATH),$(call project-path-for,recovery))
@@ -578,5 +575,3 @@ endif
 
 commands_recovery_local_path :=
 
-endif
-endif 
