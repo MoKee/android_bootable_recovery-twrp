@@ -99,6 +99,7 @@ private:
 	void Setup_Image(bool Display_Error);                                     // Sets defaults for an image partition
 	void Setup_AndSec(void);                                                  // Sets up .android_secure settings
 	void Find_Real_Block_Device(string& Block_Device, bool Display_Error);    // Checks the block device given and follows symlinks until it gets to the real block device
+	unsigned long long IOCTL_Get_Block_Size();                                // Finds the partition size using ioctl
 	bool Find_Partition_Size();                                               // Finds the partition size from /proc/partitions
 	unsigned long long Get_Size_Via_du(string Path, bool Display_Error);      // Uses du to get sizes
 	bool Wipe_EXT23(string File_System);                                      // Formats as ext3 or ext2
@@ -178,6 +179,7 @@ friend class TWPartitionManager;
 friend class DataManager;
 friend class GUIPartitionList;
 friend class GUIAction;
+friend class PageManager;
 };
 
 class TWPartitionManager
@@ -233,6 +235,9 @@ public:
 	bool Remove_MTP_Storage(string Mount_Point);                              // Adds or removes an MTP Storage partition
 	bool Remove_MTP_Storage(unsigned int Storage_ID);                         // Adds or removes an MTP Storage partition
 	bool Flash_Image(string Filename);                                        // Flashes an image to a selected partition from the partition list
+	void Translate_Partition(const char* path, const char* resource_name, const char* default_value);
+	void Translate_Partition(const char* path, const char* resource_name, const char* default_value, const char* storage_resource_name, const char* storage_default_value);
+	void Translate_Partition_Display_Names();                                 // Updates display names based on translations
 
 	TWAtomicInt stop_backup;
 
