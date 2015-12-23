@@ -422,6 +422,7 @@ int TWPartitionManager::Check_Backup_Name(bool Display_Error) {
 	string Backup_Name, Backup_Loc;
 
 	DataManager::GetValue(TW_BACKUP_NAME, Backup_Name);
+	gui_err(Backup_Name.c_str());
 	copy_size = Backup_Name.size();
 	// Check size
 	if (copy_size > MAX_BACKUP_NAME_LEN) {
