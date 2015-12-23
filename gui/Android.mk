@@ -113,6 +113,10 @@ ifeq ($(TWRP_NEW_THEME),true)
     TWRP_THEME_LOC := $(commands_recovery_local_path)/gui/theme/$(TW_THEME)
     TWRP_RES := $(commands_recovery_local_path)/gui/theme/common/fonts
     TWRP_RES += $(commands_recovery_local_path)/gui/theme/common/languages
+  ifeq ($(TWRP_BUILD_ZH_CN_SUPPORT),true)
+        TWRP_RES += $(commands_recovery_local_path)/gui/languages/zh_CN/fonts
+        TWRP_RES += $(commands_recovery_local_path)/gui/languages/zh_CN/languages
+    endif
     TWRP_RES += $(commands_recovery_local_path)/gui/theme/common/$(word 1,$(subst _, ,$(TW_THEME))).xml
 # for future copying of used include xmls and fonts:
 # UI_XML := $(TWRP_THEME_LOC)/ui.xml
