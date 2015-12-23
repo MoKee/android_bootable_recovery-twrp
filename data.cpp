@@ -585,7 +585,7 @@ void DataManager::SetBackupFolder()
 	str += "/TWRP/BACKUPS/";
 
 	string dev_id;
-	GetValue("device_id", dev_id);
+     GetValue("device_id", dev_id);
 
 	str += dev_id;
 	LOGINFO("Backup folder set to '%s'\n", str.c_str());
