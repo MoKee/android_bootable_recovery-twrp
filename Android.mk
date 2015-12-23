@@ -28,14 +28,14 @@ endif
 
 ifeq ($(PROJECT_PATH_AGREES),true)
 
-ifeq ($(shell test $(PLATFORM_SDK_VERSION) -gt 20; echo $$?),0)
+ifneq (,$(filter $(PLATFORM_SDK_VERSION), 21 22))
 # Make recovery domain permissive for TWRP
     BOARD_SEPOLICY_UNION += twrp.te
 endif
 
 include $(CLEAR_VARS)
 
-TWRES_PATH := "/twres/"
+TWRES_PATH := /twres/
 TWHTCD_PATH := $(TWRES_PATH)htcd/
 
 TARGET_RECOVERY_GUI := true
@@ -368,7 +368,7 @@ else
     endif
 endif
 ifneq ($(TW_NO_EXFAT), true)
-    LOCAL_ADDITIONAL_DEPENDENCIES += mkexfatfs
+    LOCAL_ADDITIONAL_DEPENDENCIES += mkexfatfs fsckexfat
 endif
 ifeq ($(BOARD_HAS_NO_REAL_SDCARD),)
     LOCAL_ADDITIONAL_DEPENDENCIES += parted
@@ -414,6 +414,13 @@ ifeq ($(TW_INCLUDE_NTFS_3G),true)
         ntfs-3g \
         ntfsfix \
         mkntfs
+endif
+ifeq ($(TARGET_USERIMAGES_USE_F2FS), true)
+ifeq ($(shell test $(CM_PLATFORM_SDK_VERSION) -ge 3; echo $$?),0)
+    LOCAL_ADDITIONAL_DEPENDENCIES += \
+        fsck.f2fs \
+        mkfs.f2fs
+endif
 endif
 
 include $(BUILD_EXECUTABLE)
@@ -563,6 +570,7 @@ ifeq ($(BUILD_ID), GINGERBREAD)
 endif
 ifneq ($(TW_NO_EXFAT), true)
     include $(commands_recovery_local_path)/exfat/mkfs/Android.mk \
+            $(commands_recovery_local_path)/exfat/fsck/Android.mk \
             $(commands_recovery_local_path)/fuse/Android.mk \
             $(commands_recovery_local_path)/exfat/libexfat/Android.mk
 endif
