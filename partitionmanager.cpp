@@ -422,7 +422,10 @@ int TWPartitionManager::Check_Backup_Name(bool Display_Error) {
 	string Backup_Name, Backup_Loc;
 
 	DataManager::GetValue(TW_BACKUP_NAME, Backup_Name);
-	copy_size = Backup_Name.size();
+
+     gui_err(Backup_Name.c_str());
+
+    copy_size = Backup_Name.size();
 	// Check size
 	if (copy_size > MAX_BACKUP_NAME_LEN) {
 		if (Display_Error)
@@ -680,10 +683,11 @@ int TWPartitionManager::Run_Backup(void) {
 
 	DataManager::GetValue(TW_BACKUPS_FOLDER_VAR, Backup_Folder);
 	DataManager::GetValue(TW_BACKUP_NAME, Backup_Name);
-	if (Backup_Name == gui_parse_text("{@current_date}")) {
+        if(Backup_Name == gui_parse_text("{@current_date}")) {
+      //if (Backup_Name =="(Current Date)" ) {
 		Backup_Name = TWFunc::Get_Current_Date();
-	} else if (Backup_Name == gui_parse_text("{@auto_generate}") || Backup_Name == "0" || Backup_Name.empty()) {
-		TWFunc::Auto_Generate_Backup_Name();
+    } else if (Backup_Name == gui_parse_text("{@auto_generate}") || Backup_Name == "0" || Backup_Name.empty()) {
+        TWFunc::Auto_Generate_Backup_Name();
 		DataManager::GetValue(TW_BACKUP_NAME, Backup_Name);
 	}
 	LOGINFO("Backup Name is: '%s'\n", Backup_Name.c_str());
