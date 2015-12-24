@@ -1,4 +1,5 @@
 LOCAL_PATH := system/core/toolbox
+
 include $(CLEAR_VARS)
 
 OUR_TOOLS := \
@@ -41,29 +42,31 @@ ifeq ($(TW_USE_TOOLBOX), true)
     ifeq ($(shell test $(PLATFORM_SDK_VERSION) -gt 22; echo $$?),0)
         # These are the only toolbox tools in M. The rest are now in toybox.
         BSD_TOOLS := \
-            dd \
-            du \
+            dd
+          #  du \
 
         OUR_TOOLS := \
-            df \
             iftop \
             ioctl \
-            ionice \
             log \
             ls \
-            lsof \
-            mount \
             nandread \
             newfs_msdos \
             ps \
             prlimit \
-            renice \
             sendevent \
             start \
             stop \
-            top \
-            uptime \
-            watchprops \
+            top
+
+
+             # df \
+             lsof \
+             mount \
+              renice \
+              uptime \
+              watchprops\
+              ionice
 
     else
         ifneq (,$(filter $(PLATFORM_SDK_VERSION), 21 22))
