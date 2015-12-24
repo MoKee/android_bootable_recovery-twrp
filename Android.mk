@@ -100,7 +100,10 @@ LOCAL_C_INCLUDES += \
     system/extras/ext4_utils \
     system/core/adb \
 
-LOCAL_C_INCLUDES += bionic external/stlport/stlport external/openssl/include $(LOCAL_PATH)/libmincrypt/includes
+LOCAL_C_INCLUDES += bionic external/openssl/include $(LOCAL_PATH)/libmincrypt/includes
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 23; echo $$?),0)
+    LOCAL_C_INCLUDES += external/stlport/stlport
+endif
 
 LOCAL_STATIC_LIBRARIES :=
 LOCAL_SHARED_LIBRARIES :=
@@ -109,7 +112,7 @@ LOCAL_STATIC_LIBRARIES += libguitwrp
 LOCAL_SHARED_LIBRARIES += libz libc libcutils libstdc++ libtar libblkid libminuitwrp libminadbd libmtdutils libminzip libaosprecovery
 LOCAL_SHARED_LIBRARIES += libcrecovery
 
-ifeq (,$(filter $(PLATFORM_SDK_VERSION), 23))
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 23; echo $$?),0)
     LOCAL_SHARED_LIBRARIES += libstlport
 else
     LOCAL_SHARED_LIBRARIES += libc++
@@ -298,6 +301,9 @@ ifneq ($(TW_SECONDARY_BRIGHTNESS_PATH),)
 endif
 ifneq ($(TW_MAX_BRIGHTNESS),)
 	LOCAL_CFLAGS += -DTW_MAX_BRIGHTNESS=$(TW_MAX_BRIGHTNESS)
+endif
+ifneq ($(TW_DEFAULT_BRIGHTNESS),)
+	LOCAL_CFLAGS += -DTW_DEFAULT_BRIGHTNESS=$(TW_DEFAULT_BRIGHTNESS)
 endif
 ifneq ($(TW_CUSTOM_BATTERY_PATH),)
 	LOCAL_CFLAGS += -DTW_CUSTOM_BATTERY_PATH=$(TW_CUSTOM_BATTERY_PATH)
@@ -575,7 +581,7 @@ ifneq ($(TW_NO_EXFAT), true)
             $(commands_recovery_local_path)/exfat/libexfat/Android.mk
 endif
 ifneq ($(TW_NO_EXFAT_FUSE), true)
-    include $(commands_recovery_local_path)/exfat/exfat-fuse/Android.mk
+    include $(commands_recovery_local_path)/exfat/fuse/Android.mk
 endif
 ifneq ($(TW_OEM_BUILD),true)
     include $(commands_recovery_local_path)/orscmd/Android.mk
