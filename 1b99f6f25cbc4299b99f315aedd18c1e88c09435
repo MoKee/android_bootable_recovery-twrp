@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9f244ff4_67b5f2ee",
+        "filename": "toolbox/Android.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 1318
+      },
+      "writtenOn": "2015-12-25T15:07:48Z",
+      "side": 1,
+      "message": "we don\u0027t need \u0027\\\u0027 ,just remove it .",
+      "range": {
+        "startLine": 44,
+        "startChar": 9,
+        "endLine": 44,
+        "endChar": 16
+      },
+      "revId": "1b99f6f25cbc4299b99f315aedd18c1e88c09435",
+      "serverId": "83d63960-fecf-4fd1-a7f6-e01518638a62",
+      "unresolved": false
+    }
+  ]
+}
