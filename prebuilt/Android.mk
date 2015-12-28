@@ -193,6 +193,9 @@ ifeq ($(TW_INCLUDE_NTFS_3G),true)
     RELINK_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/ntfsfix
     RELINK_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/mkntfs
 endif
+ifneq ($(wildcard external/unzip/Android.mk),)
+	RELINK_SOURCE_FILES += $(TARGET_RECOVERY_ROOT_OUT)/sbin/unzip
+endif
 
 TWRP_AUTOGEN := $(intermediates)/teamwin
 
