@@ -118,6 +118,7 @@
 		<string name="flash_done">IMAGE FLASH COMPLETED]</string>
 		<string name="wiping">Wiping {1}</string>
 		<string name="repair_not_exist">{1} does not exist! Cannot repair!</string>
+		<string name="repairing_using">Repairing {1} using {2}...</string>
 		<string name="unable_repair">Unable to repair {1}.</string>
 		<string name="mount_data_footer">Could not mount /data and unable to find crypto footer.</string>
 		<!-- {1} is the folder name that we could not create, {2} is strerror output -->
@@ -134,7 +135,7 @@
 		<string name="restoring">Restoring</string>
 		<string name="format_data_msg">You may need to reboot recovery to be able to use /data again.</string>
 		<string name="format_data_err">Unable to format to remove encryption.</string>
-		<string name="formating_using">Formatting {1} using {2}...</string>
+		<string name="formatting_using">Formatting {1} using {2}...</string>
 		<string name="unable_to_wipe">Unable to wipe {1}.</string>
 		<string name="remove_all">Removing all files under '{1}'</string>
 		<string name="wiping_data">Wiping data without wiping /data/media ...</string>
