@@ -562,7 +562,7 @@
 	<string id="utc5">(UTC +5) 叶卡捷琳堡, 伊斯兰堡</string>
 	<string id="utc6">(UTC +6) 阿拉木图, 达卡, 科伦坡</string>
 	<string id="utc7">(UTC +7) 曼谷, 河内, 雅加达</string>
-        <string id="utc8">(UTC +8) 时区 ,北京</string>
+    <string id="utc8">(UTC +8) 北京时间</string>
 	<string id="utc9">(UTC +9) 东京, 首尔, 雅库茨克</string>
 	<string id="utc10">(UTC +10) 澳大利亚东部, 关岛</string>
 	<string id="utc11">(UTC +11) 符拉迪沃斯托克, 索罗门群岛</string>
