@@ -1098,6 +1098,11 @@ int PageSet::IsCurrentPage(Page* page)
 	return ((mCurrentPage && mCurrentPage == page) ? 1 : 0);
 }
 
+std::string PageSet::GetCurrentPage() const
+{
+	return mCurrentPage ? mCurrentPage->GetName() : "";
+}
+
 int PageSet::Render(void)
 {
 	int ret;
@@ -1546,6 +1551,11 @@ int PageManager::ChangePage(std::string name)
 	return ret;
 }
 
+std::string PageManager::GetCurrentPage()
+{
+	return mCurrentSet ? mCurrentSet->GetCurrentPage() : "";
+}
+
 int PageManager::ChangeOverlay(std::string name)
 {
 	if (name.empty())
@@ -1560,24 +1570,6 @@ int PageManager::ChangeOverlay(std::string name)
 const ResourceManager* PageManager::GetResources()
 {
 	return (mCurrentSet ? mCurrentSet->GetResources() : NULL);
-}
-
-int PageManager::SwitchToConsole(void)
-{
-	PageSet* console = new PageSet(NULL);
-
-	mCurrentSet = console;
-	return 0;
-}
-
-int PageManager::EndConsole(void)
-{
-	if (mCurrentSet && mBaseSet) {
-		delete mCurrentSet;
-		mCurrentSet = mBaseSet;
-		return 0;
-	}
-	return -1;
 }
 
 int PageManager::IsCurrentPage(Page* page)

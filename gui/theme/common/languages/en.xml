@@ -9,7 +9,7 @@
 		<resource name="font_m" type="fontoverride" filename="RobotoCondensed-Regular.ttf" scale="100" />
 		<resource name="font_s" type="fontoverride" filename="RobotoCondensed-Regular.ttf" scale="100" />
 		<resource name="fixed" type="fontoverride" filename="DroidSansMono.ttf" scale="100" />
-		
+
 		<!-- Partition display names -->
 		<string name="system">System</string>
 		<string name="system_image">System Image</string>
@@ -37,7 +37,7 @@
 		<string name="battery_pct">Battery: %tw_battery%</string>
 		<string name="sort_by_name">Sort by Name</string>
 		<string name="sort_by_date">Sort by Date</string>
-		<string name="sort_by_size">Sorty by Size</string>
+		<string name="sort_by_size">Sort by Size</string>
 		<string name="sort_by_name_only">Name</string>
 		<string name="sort_by_date_only">Date</string>
 		<string name="sort_by_size_only">Size</string>
@@ -237,7 +237,8 @@
 		<string name="restore_try_decrypt_s">Trying Decryption</string>
 		<string name="restore_backup_date">Backup made on %tw_restore_file_date%</string>
 		<string name="restore_sel_part">Select Partitions to Restore:</string>
-		<string name="retore_enable_md5_chk">Enable MD5 Verification of Backup Files</string>
+		<string name="restore_enable_md5_chk">Enable MD5 Verification of Backup Files</string>
+		<string name="restore_completed">Restore Complete</string>
 		<string name="swipe_restore">Swipe to Restore</string>
 		<string name="swipe_restore_s">   Restore</string>
 		<string name="rename_backup_hdr">Rename Backup</string>
@@ -435,6 +436,7 @@
 		<string name="decrypt_data_hdr">Decrypt Data</string>
 		<string name="decrypt_data_enter_pass"></string>
 		<string name="decryt_data_failed">Password failed, please try again!</string>
+		<string name="decryt_data_failed_pattern">Pattern failed, please try again!</string>
 		<string name="decrypt_data_enter_pattern">Enter Pattern.</string>
 		<string name="decrypt_data_trying">Trying Decryption</string>
 		<string name="term_hdr">Terminal Command</string>
@@ -557,6 +559,7 @@
 		<string name="flash_done">[IMAGE FLASH COMPLETED]</string>
 		<string name="wiping">Wiping {1}</string>
 		<string name="repair_not_exist">{1} does not exist! Cannot repair!</string>
+		<string name="repairing_using">Repairing {1} using {2}...</string>
 		<string name="unable_repair">Unable to repair {1}.</string>
 		<string name="mount_data_footer">Could not mount /data and unable to find crypto footer.</string>
 		<!-- {1} is the folder name that we could not create, {2} is strerror output -->
@@ -573,7 +576,7 @@
 		<string name="restoring">Restoring</string>
 		<string name="format_data_msg">You may need to reboot recovery to be able to use /data again.</string>
 		<string name="format_data_err">Unable to format to remove encryption.</string>
-		<string name="formating_using">Formatting {1} using {2}...</string>
+		<string name="formatting_using">Formatting {1} using {2}...</string>
 		<string name="unable_to_wipe">Unable to wipe {1}.</string>
 		<string name="remove_all">Removing all files under '{1}'</string>
 		<string name="wiping_data">Wiping data without wiping /data/media ...</string>
@@ -650,6 +653,7 @@
 		<string name="copy_log">Copied recovery log to {1}.</string>
 		<string name="max_queue">Maximum zip queue reached!</string>
 		<string name="min_queue">Minimum zip queue reached!</string>
+		<string name="screenshot_saved">Screenshot was saved to {1}</string>
 		<string name="screenshot_err">Failed to take a screenshot!</string>
 		<string name="zip_wipe_cache">One or more zip requested a cache wipe -- Wiping cache now.</string>
 		<string name="and_sec_wipe_err">Unable to wipe android secure</string>

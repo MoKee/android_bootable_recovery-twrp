@@ -129,6 +129,7 @@ ifeq ($(TW_OEM_BUILD),true)
     TW_EXCLUDE_SUPERSU := true
     TW_EXCLUDE_MTP := true
 endif
+TW_USE_TOOLBOX ?= true
 ifeq ($(TARGET_USERIMAGES_USE_EXT4), true)
     LOCAL_CFLAGS += -DUSE_EXT4
     LOCAL_C_INCLUDES += system/extras/ext4_utils
@@ -252,9 +253,6 @@ endif
 ifeq ($(TW_INCLUDE_BLOBPACK), true)
     LOCAL_CFLAGS += -DTW_INCLUDE_BLOBPACK
 endif
-ifeq ($(TW_DEFAULT_EXTERNAL_STORAGE), true)
-    LOCAL_CFLAGS += -DTW_DEFAULT_EXTERNAL_STORAGE
-endif
 ifneq ($(TARGET_USE_CUSTOM_LUN_FILE_PATH),)
     LOCAL_CFLAGS += -DCUSTOM_LUN_FILE=\"$(TARGET_USE_CUSTOM_LUN_FILE_PATH)\"
 endif
@@ -372,6 +370,12 @@ else
     ifneq ($(wildcard external/toybox/Android.mk),)
         LOCAL_ADDITIONAL_DEPENDENCIES += toybox_symlinks
     endif
+    ifneq ($(wildcard external/zip/Android.mk),)
+        LOCAL_ADDITIONAL_DEPENDENCIES += zip
+    endif
+    ifneq ($(wildcard external/unzip/Android.mk),)
+        LOCAL_ADDITIONAL_DEPENDENCIES += unzip
+    endif
 endif
 ifneq ($(TW_NO_EXFAT), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += mkexfatfs fsckexfat
@@ -416,10 +420,17 @@ endif
 LOCAL_CFLAGS += -DTWRES=\"$(TWRES_PATH)\"
 LOCAL_CFLAGS += -DTWHTCD_PATH=\"$(TWHTCD_PATH)\"
 ifeq ($(TW_INCLUDE_NTFS_3G),true)
+ifeq ($(shell test $(CM_PLATFORM_SDK_VERSION) -ge 4; echo $$?),0)
+    LOCAL_ADDITIONAL_DEPENDENCIES += \
+        mount.ntfs \
+        fsck.ntfs \
+        mkfs.ntfs
+else
     LOCAL_ADDITIONAL_DEPENDENCIES += \
         ntfs-3g \
         ntfsfix \
         mkntfs
+endif
 endif
 ifeq ($(TARGET_USERIMAGES_USE_F2FS), true)
 ifeq ($(shell test $(CM_PLATFORM_SDK_VERSION) -ge 3; echo $$?),0)
