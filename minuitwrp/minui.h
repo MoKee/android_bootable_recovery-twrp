@@ -25,6 +25,13 @@ typedef unsigned short gr_pixel;
 #define FONT_TYPE_TWRP 0
 #define FONT_TYPE_TTF  1
 
+#ifdef MSM_BSP
+bool isDisplaySplit(void);
+bool isTargetMdp5();
+int getFbXres(void);
+int getLeftSplit(void);
+#endif
+
 int gr_init(void);
 void gr_exit(void);
 
