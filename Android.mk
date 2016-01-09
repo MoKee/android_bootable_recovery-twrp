@@ -129,6 +129,7 @@ ifeq ($(TW_OEM_BUILD),true)
     TW_EXCLUDE_SUPERSU := true
     TW_EXCLUDE_MTP := true
 endif
+TW_USE_TOOLBOX ?= true
 ifeq ($(TARGET_USERIMAGES_USE_EXT4), true)
     LOCAL_CFLAGS += -DUSE_EXT4
     LOCAL_C_INCLUDES += system/extras/ext4_utils
