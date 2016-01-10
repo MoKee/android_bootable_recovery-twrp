@@ -341,6 +341,10 @@ else
     LOCAL_CFLAGS += -DTW_DEFAULT_LANGUAGE=en
 endif
 
+ifneq ($(TW_BUILD_ZH_CN_SUPPORT),)
+	LOCAL_CFLAGS += -DTW_BUILD_ZH_CN_SUPPORT
+endif 
+
 LOCAL_ADDITIONAL_DEPENDENCIES := \
     dump_image \
     erase_image \
