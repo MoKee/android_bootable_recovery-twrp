@@ -5,10 +5,10 @@
 
 	<resources>
 		<!-- Font overrides - only change these if your language requires special characters -->
-		<resource name="font_l" type="fontoverride" filename="BMFYBold.ttf" scale="100" />
-		<resource name="font_m" type="fontoverride" filename="BMFYBold.ttf" scale="100" />
-		<resource name="font_s" type="fontoverride" filename="BMFYBold.ttf" scale="100" />
-		<resource name="fixed" type="fontoverride" filename="BMFYBold.ttf" scale="100" />
+		<resource name="font_l" type="fontoverride" filename="DroidSansFallback.ttf" scale="100" />
+		<resource name="font_m" type="fontoverride" filename="DroidSansFallback.ttf" scale="100" />
+		<resource name="font_s" type="fontoverride" filename="DroidSansFallback.ttf" scale="100" />
+		<resource name="fixed" type="fontoverride" filename="DroidSansFallback.ttf" scale="100" />
 
 		<!-- Partition display names -->
 		<string name="system">系统</string>
@@ -291,6 +291,8 @@
 		<string name="settings_gen_btn">常规</string>
 		<string name="use_rmrf_chk">使用rm -rf格式化</string>
 		<string name="use24clock_chk">使用24小时制</string>
+		<string name="restore_enable_md5_chk">恢复备份时允许MD5验证</string>
+
 		<string name="rev_navbar_chk">反转导航栏布局</string>
 		<string name="simact_chk">模拟主题测试</string>
 		<string name="simfail_chk">模拟失败</string>
@@ -434,6 +436,7 @@
 		<string name="decrypt_data_hdr">解密数据</string>
 		<string name="decrypt_data_enter_pass"></string>
 		<string name="decryt_data_failed">密码错误，请重新输入!</string>
+		<string name="decryt_data_failed_pattern">密码验证失败</string>
 		<string name="decrypt_data_enter_pattern">请输入你的模式.</string>
 		<string name="decrypt_data_trying">模式失败，请再试一次</string>
 		<string name="term_hdr">终端命令行</string>
@@ -485,10 +488,8 @@
 		<string name="md5_error"> * MD5 出错!</string>
 		<string name="md5_compute_error"> * 计算MD5出错.</string>
 		<string name="md5_created"> * MD5已生成.</string>
-                <!--
 		<string name="current_date">(当前日期)</string>
 		<string name="auto_generate">(自动生成)</string>
-                -->
 		<string name="unable_to_locate_partition">无法找到 '{1}' 计算备份分区.</string>
 		<string name="no_partition_selected">没有选择要备份的分区.</string>
 		<string name="total_partitions_backup"> * 分区备份总数: {1}</string>
@@ -516,6 +517,7 @@
 		<string name="restore_part_count">正在还原 {1} 分区...</string>
 		<string name="total_restore_size">总恢复大小：{1}MB</string>
 		<string name="updating_system_details">更新系统详细信息</string>
+                <string name="restore_completed">系统还原完成</string>
 		<string name="restore_complete">[还原完成 {1} 秒]</string>
 		<!-- {1} is the path we could not open, {2} is strerror output -->
 		<string name="error_opening_strerr">打开出错: '{1}' ({2})</string>
@@ -574,7 +576,7 @@
 		<string name="restoring">还原中</string>
 		<string name="format_data_msg">你可以重启recovery后再尝试挂载/data分区.</string>
 		<string name="format_data_err">无法格式化删除加密.</string>
-		<string name="formating_using">正在格式化 {1} 使用 {2}...</string>
+                <string name="formatting_using">正在格式化 {1} 使用 {2}...</string>
 		<string name="unable_to_wipe">无法清除 {1}.</string>
 		<string name="remove_all">移除'{1}'下的所有文件</string>
 		<string name="wiping_data">清除DATA但不清除/data/media ...</string>

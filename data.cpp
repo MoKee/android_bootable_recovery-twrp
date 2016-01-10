@@ -920,7 +920,11 @@ void DataManager::SetDefaultValues()
 #endif
 	mValues.insert(make_pair("tw_mount_system_ro", make_pair("2", 1)));
 	mValues.insert(make_pair("tw_never_show_system_ro_page", make_pair("0", 1)));
+#ifdef TW_BUILD_ZH_CN_SUPPORT
+	mValues.insert(make_pair("tw_language", make_pair("cn", 1)));
+#else
 	mValues.insert(make_pair("tw_language", make_pair(EXPAND(TW_DEFAULT_LANGUAGE), 1)));
+#endif 
 	LOGINFO("LANG: %s\n", EXPAND(TW_DEFAULT_LANGUAGE));
 
 	mValues.insert(make_pair("tw_has_adopted_storage", make_pair("0", 0)));
