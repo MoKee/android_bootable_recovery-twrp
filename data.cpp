@@ -819,7 +819,7 @@ void DataManager::SetDefaultValues()
 	mValues.insert(make_pair("tw_terminal_state", make_pair("0", 0)));
 	mValues.insert(make_pair("tw_background_thread_running", make_pair("0", 0)));
 	mValues.insert(make_pair(TW_RESTORE_FILE_DATE, make_pair("0", 0)));
-	mValues.insert(make_pair("tw_military_time", make_pair("0", 1)));
+    mValues.insert(make_pair("tw_military_time", make_pair("1", 0)));
 #ifdef TW_NO_SCREEN_TIMEOUT
 	mValues.insert(make_pair("tw_screen_timeout_secs", make_pair("0", 1)));
 	mValues.insert(make_pair("tw_no_screen_timeout", make_pair("1", 1)));
@@ -903,7 +903,11 @@ void DataManager::SetDefaultValues()
 #endif
 	mValues.insert(make_pair("tw_mount_system_ro", make_pair("2", 1)));
 	mValues.insert(make_pair("tw_never_show_system_ro_page", make_pair("0", 1)));
+#ifdef TW_BUILD_ZH_CN_SUPPORT
+	mValues.insert(make_pair("tw_language", make_pair("cn", 1)));
+#else
 	mValues.insert(make_pair("tw_language", make_pair(EXPAND(TW_DEFAULT_LANGUAGE), 1)));
+#endif 
 	LOGINFO("LANG: %s\n", EXPAND(TW_DEFAULT_LANGUAGE));
 
 	pthread_mutex_unlock(&m_valuesLock);
