@@ -894,7 +894,7 @@ void DataManager::SetDefaultValues()
 #endif
 #ifdef TW_HAS_MTP
 	mConstValues.insert(make_pair("tw_has_mtp", "1"));
-	mValues.insert(make_pair("tw_mtp_enabled", make_pair("1", 1)));
+    mValues.insert(make_pair("tw_mtp_enabled", make_pair("1" ,0)));
 	mValues.insert(make_pair("tw_mtp_debug", make_pair("0", 1)));
 #else
 	LOGINFO("TW_EXCLUDE_MTP := true\n");
@@ -902,12 +902,8 @@ void DataManager::SetDefaultValues()
 	mConstValues.insert(make_pair("tw_mtp_enabled", "0"));
 #endif
 	mValues.insert(make_pair("tw_mount_system_ro", make_pair("2", 1)));
-	mValues.insert(make_pair("tw_never_show_system_ro_page", make_pair("0", 1)));
-#ifdef TW_BUILD_ZH_CN_SUPPORT
-	mValues.insert(make_pair("tw_language", make_pair("cn", 1)));
-#else
+    mValues.insert(make_pair("tw_never_show_system_ro_page", make_pair("1", 1)));
 	mValues.insert(make_pair("tw_language", make_pair(EXPAND(TW_DEFAULT_LANGUAGE), 1)));
-#endif 
 	LOGINFO("LANG: %s\n", EXPAND(TW_DEFAULT_LANGUAGE));
 
 	pthread_mutex_unlock(&m_valuesLock);
