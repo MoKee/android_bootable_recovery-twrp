@@ -367,7 +367,7 @@ else
     LOCAL_LDFLAGS += -Wl,-dynamic-linker,/sbin/linker64
 endif
 ifneq ($(TW_USE_TOOLBOX), true)
-    LOCAL_ADDITIONAL_DEPENDENCIES += busybox_symlinks
+	LOCAL_ADDITIONAL_DEPENDENCIES += busybox_symlinks
 else
     ifneq ($(wildcard external/toybox/Android.mk),)
         LOCAL_ADDITIONAL_DEPENDENCIES += toybox_symlinks
@@ -378,7 +378,7 @@ else
     ifneq ($(wildcard external/unzip/Android.mk),)
         LOCAL_ADDITIONAL_DEPENDENCIES += unzip
     endif
-endif
+endif #end TW_USE_TOOLBOX 
 ifneq ($(TW_NO_EXFAT), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += mkexfatfs fsckexfat
 endif
