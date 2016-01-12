@@ -172,6 +172,11 @@ $(TWRP_RES_GEN):
 ifneq ($(TW_USE_TOOLBOX), true)
 	ln -sf $(TWRP_SH_TARGET) $(TARGET_RECOVERY_ROOT_OUT)/sbin/sh
 endif
+#Test external/busybox/Android.mk Exists or Not 
+# We just link awk to busybox 
+ifeq ($(wildcard external/busybox/Android.mk),)
+	ln -sf /sbin/busybox $(TARGET_RECOVERY_ROOT_OUT)/sbin/awk
+endif
 	ln -sf /sbin/pigz $(TARGET_RECOVERY_ROOT_OUT)/sbin/gzip
 	ln -sf /sbin/unpigz $(TARGET_RECOVERY_ROOT_OUT)/sbin/gunzip
 
