@@ -366,9 +366,7 @@ ifneq ($(TARGET_ARCH), arm64)
 else
     LOCAL_LDFLAGS += -Wl,-dynamic-linker,/sbin/linker64
 endif
-ifneq ($(TW_USE_TOOLBOX), true)
-    LOCAL_ADDITIONAL_DEPENDENCIES += busybox_symlinks
-else
+ifeq ($(TW_USE_TOOLBOX), true)
     ifneq ($(wildcard external/toybox/Android.mk),)
         LOCAL_ADDITIONAL_DEPENDENCIES += toybox_symlinks
     endif
@@ -378,7 +376,12 @@ else
     ifneq ($(wildcard external/unzip/Android.mk),)
         LOCAL_ADDITIONAL_DEPENDENCIES += unzip
     endif
-endif
+else 
+#if TW_USE_TOOLBOX : "" , and external/busybox/Android.mk not exists , we will build static busybox for twrp ... .. 
+	ifneq ($(wildcard external/busybox/Android.mk),)
+    		LOCAL_ADDITIONAL_DEPENDENCIES += busybox_symlinks
+	endif
+endif #end TW_USE_TOOLBOX 
 ifneq ($(TW_NO_EXFAT), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += mkexfatfs fsckexfat
 endif
@@ -445,6 +448,7 @@ endif
 include $(BUILD_EXECUTABLE)
 
 ifneq ($(TW_USE_TOOLBOX), true)
+ifneq ($(wildcard external/busybox/Android.mk),)
 include $(CLEAR_VARS)
 # Create busybox symlinks... gzip and gunzip are excluded because those need to link to pigz instead
 BUSYBOX_LINKS := $(shell cat external/busybox/busybox-full.links)
@@ -476,6 +480,7 @@ ALL_DEFAULT_INSTALLED_MODULES += $(RECOVERY_BUSYBOX_SYMLINKS)
 endif
 include $(BUILD_PHONY_PACKAGE)
 RECOVERY_BUSYBOX_SYMLINKS :=
+endif # external/busybox/Android.mk Exists  
 endif # !TW_USE_TOOLBOX
 
 # All the APIs for testing
