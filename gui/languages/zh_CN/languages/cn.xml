@@ -111,7 +111,7 @@
 		<string name="no_osrb">你确定重启设备?</string>
 		<string name="no_ospo">你确定关闭手机?</string>
 		<string name="rebooting">正在重启...</string>
-		<string name="swipe_reboot_s">   重启</string>
+		<string name="swipe_reboot">滑动按钮重启</string>
 		<string name="swipe_flash">滑动按钮刷入</string>
 		<string name="confirm_action">确认操作</string>
 		<string name="back_cancel">按返回键取消操作.</string>

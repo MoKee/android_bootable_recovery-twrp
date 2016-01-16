@@ -703,7 +703,7 @@
 					<action function="set">tw_action_text1={@rebooting=Rebooting...}</action>
 					<action function="set">tw_action_text2=</action>
 					<action function="set">tw_complete_text1={@rebooting=Rebooting...}</action>
-					<action function="set">tw_slider_text={@swipe_reboot_s=   Reboot}</action>
+					<action function="set">tw_slider_text={@swipe_reboot=   Reboot}</action>
 					<action function="page">rebootcheck</action>
 				</actions>
 			</button>
@@ -1052,7 +1052,7 @@
 					<action function="set">tw_action_text1={@rebooting=Rebooting...}</action>
 					<action function="set">tw_action_text2=</action>
 					<action function="set">tw_complete_text1={@rebooting=Rebooting...}</action>
-					<action function="set">tw_slider_text={@swipe_reboot_s=   Reboot}</action>
+					<action function="set">tw_slider_text={@swipe_reboot=   Reboot}</action>
 					<action function="page">rebootcheck</action>
 				</actions>
 			</button>
@@ -3155,7 +3155,7 @@
 					<action function="set">tw_text2={@no_osrb=sure you wish to reboot?}</action>
 					<action function="set">tw_action_text1={@rebooting=Rebooting...}</action>
 					<action function="set">tw_complete_text1={@rebooting=Rebooting...}</action>
-					<action function="set">tw_slider_text={@swipe_reboot_s=   Reboot}</action>
+					<action function="set">tw_slider_text={@swipe_reboot=   Reboot}</action>
 					<action function="page">rebootcheck</action>
 				</actions>
 			</button>
@@ -3191,7 +3191,7 @@
 					<action function="set">tw_text2={@no_osrb=sure you wish to reboot?}</action>
 					<action function="set">tw_action_text1={@rebooting=Rebooting...}</action>
 					<action function="set">tw_complete_text1={@rebooting=Rebooting...}</action>
-					<action function="set">tw_slider_text={@swipe_reboot_s=   Reboot}</action>
+					<action function="set">tw_slider_text={@swipe_reboot=   Reboot}</action>
 					<action function="page">rebootcheck</action>
 				</actions>
 			</button>
@@ -3209,7 +3209,7 @@
 					<action function="set">tw_text2={@no_osrb=sure you wish to reboot?}</action>
 					<action function="set">tw_action_text1={@rebooting=Rebooting...}</action>
 					<action function="set">tw_complete_text1={@rebooting=Rebooting...}</action>
-					<action function="set">tw_slider_text={@swipe_reboot_s=   Reboot}</action>
+					<action function="set">tw_slider_text={@swipe_reboot=   Reboot}</action>
 					<action function="page">rebootcheck</action>
 				</actions>
 			</button>
@@ -3227,7 +3227,7 @@
 					<action function="set">tw_text2={@no_osrb=sure you wish to reboot?}</action>
 					<action function="set">tw_action_text1={@rebooting=Rebooting...}</action>
 					<action function="set">tw_complete_text1={@rebooting=Rebooting...}</action>
-					<action function="set">tw_slider_text={@swipe_reboot_s=   Reboot}</action>
+					<action function="set">tw_slider_text={@swipe_reboot=   Reboot}</action>
 					<action function="page">rebootcheck</action>
 				</actions>
 			</button>
