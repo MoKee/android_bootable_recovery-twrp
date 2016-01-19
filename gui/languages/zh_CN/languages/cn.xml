@@ -663,5 +663,6 @@
 		<string name="no_real_sdcard">该设备没有一个真正的SD卡! 终止!</string>
 		<string name="cancel_sideload">取消ADB sideload钟...</string>
 		<string name="change_fs_err">转换文件系统出错.</string>
+		<string name="screenshot_saved">屏幕截图保存到 {1}</string>
 	</resources>
 </language>
