@@ -65,12 +65,10 @@ LOCAL_SRC_FILES := \
     lib/xwrap.c \
     main.c \
     toys/android/getenforce.c \
-    toys/android/getprop.c \
     toys/android/load_policy.c \
     toys/android/restorecon.c \
     toys/android/runcon.c \
     toys/android/setenforce.c \
-    toys/android/setprop.c \
     toys/lsb/dmesg.c \
     toys/lsb/hostname.c \
     toys/lsb/killall.c \
@@ -291,7 +289,6 @@ ALL_TOOLS := \
     find \
     free \
     getenforce \
-    getprop \
     grep \
     groups \
     head \
@@ -346,7 +343,6 @@ ALL_TOOLS := \
     sed \
     seq \
     setenforce \
-    setprop \
     setsid \
     sha1sum \
     sleep \
