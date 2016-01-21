@@ -386,7 +386,11 @@ ifneq ($(TW_NO_EXFAT), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += mkexfatfs fsckexfat
 endif
 ifeq ($(BOARD_HAS_NO_REAL_SDCARD),)
-    LOCAL_ADDITIONAL_DEPENDENCIES += parted
+    ifeq ($(shell test $(PLATFORM_SDK_VERSION) -gt 22; echo $$?),0)
+        LOCAL_ADDITIONAL_DEPENDENCIES += sgdisk
+    else
+        LOCAL_ADDITIONAL_DEPENDENCIES += sgdisk_static
+    endif
 endif
 ifneq ($(TW_EXCLUDE_ENCRYPTED_BACKUPS), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += openaes ../openaes/LICENSE
@@ -398,7 +402,15 @@ ifeq ($(TW_INCLUDE_DUMLOCK), true)
 endif
 ifneq ($(TW_EXCLUDE_SUPERSU), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += \
-        su install-recovery.sh 99SuperSUDaemon Superuser.apk
+        install-recovery.sh 99SuperSUDaemon Superuser.apk
+    ifeq ($(TARGET_ARCH), arm)
+        LOCAL_ADDITIONAL_DEPENDENCIES += \
+            chattr.pie libsupol.so suarm supolicy
+    endif
+    ifeq ($(TARGET_ARCH), arm64)
+        LOCAL_ADDITIONAL_DEPENDENCIES += \
+            libsupol.soarm64 suarm64 supolicyarm64
+    endif
 endif
 ifneq ($(TW_NO_EXFAT_FUSE), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += exfat-fuse

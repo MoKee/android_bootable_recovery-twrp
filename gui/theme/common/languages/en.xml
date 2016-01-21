@@ -379,6 +379,7 @@
 		<string name="inject_twrp_complete">TWRP Injection Complete</string>
 		<string name="swipe_to_confirm">Swipe to Confirm</string>
 		<string name="part_sd_hdr">Partition SD Card</string>
+		<string name="invalid_partsd_sel">You must select a removable device</string>
 		<string name="part_sd_lose">You will lose all files on your SD card!</string>
 		<string name="part_sd_undo">This action cannot be undone!</string>
 		<string name="part_sd_ext_sz">EXT Size:</string>
@@ -664,5 +665,6 @@
 		<string name="no_real_sdcard">This device does not have a real SD Card! Aborting!</string>
 		<string name="cancel_sideload">Cancelling ADB sideload...</string>
 		<string name="change_fs_err">Error changing file system.</string>
+		<string name="theme_ver_err">Custom theme version does not match TWRP version. Using stock theme.</string>
 	</resources>
 </language>
