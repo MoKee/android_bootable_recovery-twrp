@@ -137,6 +137,7 @@
 		<string name="wipe_complete">清除完成</string>
 		<string name="sel_part_wipe">选择需要清除的分区:</string>
 		<string name="invalid_part_sel">无效的分区选择</string>
+		<string name="invalid_partsd_sel">你必须选择一个可移动的设备</string>
 		<string name="format_data_hdr">格式化DATA</string>
 		<string name="format_data_btn">格式化DATA</string>
 		<string name="format_data_ptr1">格式化DATA将会清除所有应用程序,</string>
