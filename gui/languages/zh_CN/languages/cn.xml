@@ -300,6 +300,7 @@
 		<string name="lft_navbar_rdo">左对齐导航栏按钮</string>
 		<string name="rht_navbar_rdo">右对齐导航栏按钮</string>
 		<string name="restore_defaults_btn">恢复默认值</string>
+		<string name="sel_lang_btn">选择默认语言</string>
 		<string name="settings_tz_btn">时区</string>
 		<string name="settings_screen_btn">屏幕</string>
 		<string name="settings_screen_bright_btn">屏幕亮度</string>
