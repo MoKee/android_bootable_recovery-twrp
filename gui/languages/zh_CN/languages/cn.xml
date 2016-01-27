@@ -301,6 +301,7 @@
 		<string name="lft_navbar_rdo">左对齐导航栏按钮</string>
 		<string name="rht_navbar_rdo">右对齐导航栏按钮</string>
 		<string name="restore_defaults_btn">恢复默认值</string>
+		<string name="sel_lang_btn">选择默认语言</string>
 		<string name="settings_tz_btn">时区</string>
 		<string name="settings_screen_btn">屏幕</string>
 		<string name="settings_screen_bright_btn">屏幕亮度</string>
@@ -436,8 +437,8 @@
 		<string name="fm_complete">文件操作完成</string>
 		<string name="decrypt_data_hdr">解密数据</string>
 		<string name="decrypt_data_enter_pass"></string>
-		<string name="decryt_data_failed">密码错误，请重新输入!</string>
-		<string name="decryt_data_failed_pattern">密码验证失败</string>
+		<string name="decrypt_data_failed">密码错误，请重新输入!</string>
+		<string name="decrypt_data_failed_pattern">密码验证失败</string>
 		<string name="decrypt_data_enter_pattern">请输入你的模式.</string>
 		<string name="decrypt_data_trying">模式失败，请再试一次</string>
 		<string name="term_hdr">终端命令行</string>
