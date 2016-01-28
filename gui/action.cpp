@@ -1178,7 +1178,7 @@ int GUIAction::nandroid(std::string arg)
 				operation_end(1);
 				return -1;
 			}
-			DataManager::SetValue(TW_BACKUP_NAME, "(Auto Generate)");
+			DataManager::SetValue(TW_BACKUP_NAME, auto_gen);
 		} else if (arg == "restore") {
 			string Restore_Name;
 			DataManager::GetValue("tw_restore", Restore_Name);
