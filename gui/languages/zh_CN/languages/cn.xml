@@ -665,5 +665,6 @@
 		<string name="cancel_sideload">取消ADB sideload钟...</string>
 		<string name="change_fs_err">转换文件系统出错.</string>
 		<string name="screenshot_saved">屏幕截图保存到 {1}</string>
+		<string name="up_a_level">(返回上级目录)</string>
 	</resources>
 </language>
