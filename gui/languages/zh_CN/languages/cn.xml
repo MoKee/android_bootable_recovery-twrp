@@ -293,7 +293,6 @@
 		<string name="use_rmrf_chk">使用rm -rf格式化</string>
 		<string name="use24clock_chk">使用24小时制</string>
 		<string name="restore_enable_md5_chk">恢复备份时允许MD5验证</string>
-
 		<string name="rev_navbar_chk">反转导航栏布局</string>
 		<string name="simact_chk">模拟主题测试</string>
 		<string name="simfail_chk">模拟失败</string>
@@ -519,7 +518,7 @@
 		<string name="restore_part_count">正在还原 {1} 分区...</string>
 		<string name="total_restore_size">总恢复大小：{1}MB</string>
 		<string name="updating_system_details">更新系统详细信息</string>
-                <string name="restore_completed">系统还原完成</string>
+		<string name="restore_completed">系统还原完成</string>
 		<string name="restore_complete">[还原完成 {1} 秒]</string>
 		<!-- {1} is the path we could not open, {2} is strerror output -->
 		<string name="error_opening_strerr">打开出错: '{1}' ({2})</string>
@@ -577,7 +576,7 @@
 		<string name="md5_fail_match">MD5不匹配 '{1}'.</string>
 		<string name="restoring">还原中</string>
 		<string name="format_data_msg">你可以重启recovery后再尝试挂载/data分区.</string>
-		<string name="format_data_err">无法格式化删除加密.</string>
+                <string name="format_data_err">无法格式化删除加密.</string>
                 <string name="formatting_using">正在格式化 {1} 使用 {2}...</string>
 		<string name="unable_to_wipe">无法清除 {1}.</string>
 		<string name="remove_all">移除'{1}'下的所有文件</string>
