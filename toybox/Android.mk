@@ -326,7 +326,6 @@ ALL_TOOLS := \
     od \
     paste \
     patch \
-    pgrep \
     pidof \
     pkill \
     pmap \
