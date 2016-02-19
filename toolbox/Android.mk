@@ -202,17 +202,17 @@ ifneq (,$(filter $(PLATFORM_SDK_VERSION), 21 22 23))
     endif
 endif
 
-ifneq ($(TW_USE_TOOLBOX), true)
-    ifeq ($(shell test $(PLATFORM_SDK_VERSION) -le 22; echo $$?),0)
-        # Rule to make getprop and setprop in M trees where toybox normally
-        # provides these tools. Toybox does not allow for easy dynamic
-        # configuration, so we would have to include the entire toybox binary
-        # which takes up more space than is necessary so long as we are still
-        # including busybox.
-        LOCAL_SRC_FILES += \
-            ../../../$(TWRP_TOOLBOX_PATH)/getprop.c \
-            ../../../$(TWRP_TOOLBOX_PATH)/setprop.c
-        OUR_TOOLS += getprop setprop
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -gt 22; echo $$?),0)
+    # Rule to make getprop and setprop in M trees where toybox normally
+    # provides these tools. Toybox does not allow for easy dynamic
+    # configuration, so we would have to include the entire toybox binary
+    # which takes up more space than is necessary so long as we are still
+    # including busybox.
+    LOCAL_SRC_FILES += \
+        ../../../$(TWRP_TOOLBOX_PATH)/getprop.c \
+        ../../../$(TWRP_TOOLBOX_PATH)/setprop.c
+    OUR_TOOLS += getprop setprop
+    ifneq ($(TW_USE_TOOLBOX), true)
         LOCAL_SRC_FILES += ls.c
     endif
 endif
