@@ -40,10 +40,6 @@ endif
 
 ifeq ($(TW_USE_TOOLBOX), true)
     ifeq ($(shell test $(PLATFORM_SDK_VERSION) -gt 22; echo $$?),0)
-        # These are the only toolbox tools in M. The rest are now in toybox.
-        BSD_TOOLS := \
-            dd \
-
         OUR_TOOLS := \
             iftop \
             ioctl \
@@ -56,7 +52,6 @@ ifeq ($(TW_USE_TOOLBOX), true)
             sendevent \
             start \
             stop \
-            top \
 
     else
         ifneq (,$(filter $(PLATFORM_SDK_VERSION), 21 22))
@@ -202,7 +197,9 @@ ifneq (,$(filter $(PLATFORM_SDK_VERSION), 21 22 23))
     # libusbhost is only used by lsusb, and that isn't usually included in toolbox.
     # The linker strips out all the unused library code in the normal case.
     LOCAL_STATIC_LIBRARIES := libusbhost
-    LOCAL_WHOLE_STATIC_LIBRARIES := $(patsubst %,libtoolbox_%,$(BSD_TOOLS))
+    ifneq (,$(filter $(PLATFORM_SDK_VERSION), 21 22))
+        LOCAL_WHOLE_STATIC_LIBRARIES := $(patsubst %,libtoolbox_%,$(BSD_TOOLS))
+    endif
 endif
 
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -gt 22; echo $$?),0)
@@ -230,7 +227,7 @@ include $(BUILD_EXECUTABLE)
 
 $(LOCAL_PATH)/toolbox.c: $(intermediates)/tools.h
 
-ifneq (,$(filter $(PLATFORM_SDK_VERSION), 21 22 23))
+ifneq (,$(filter $(PLATFORM_SDK_VERSION), 21 22))
     ALL_TOOLS := $(BSD_TOOLS) $(OUR_TOOLS)
 else
     ALL_TOOLS := $(OUR_TOOLS)

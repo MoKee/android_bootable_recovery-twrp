@@ -1,6 +1,6 @@
 #
 # Copyright (C) 2014 The Android Open Source Project
-# Copyright (C) 2015 Mokee Open Source Project
+# Copyright (C) 2016 Mokee Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,21 @@ ifneq ($(wildcard external/toybox/Android.mk),)
 ifeq ($(TW_USE_TOOLBOX), true)
 
 LOCAL_PATH := external/toybox
+
+LOCAL_CFLAGS := \
+    -std=c99 \
+    -Os \
+    -Wno-char-subscripts \
+    -Wno-sign-compare \
+    -Wno-string-plus-int \
+    -Wno-uninitialized \
+    -Wno-unused-parameter \
+    -funsigned-char \
+    -ffunction-sections -fdata-sections \
+    -fno-asynchronous-unwind-tables \
+
+toybox_version := $(shell git -C $(LOCAL_PATH) rev-parse --short=12 HEAD 2>/dev/null)-android
+LOCAL_CFLAGS += -DTOYBOX_VERSION='"$(toybox_version)"'
 
 #
 # To update:
@@ -217,24 +232,7 @@ LOCAL_SRC_FILES := \
     toys/posix/wc.c \
     toys/posix/xargs.c
 
-LOCAL_CFLAGS += \
-    -std=c99 \
-    -Os \
-    -Wno-char-subscripts \
-    -Wno-sign-compare \
-    -Wno-string-plus-int \
-    -Wno-uninitialized \
-    -Wno-unused-parameter \
-    -funsigned-char \
-    -ffunction-sections -fdata-sections \
-    -fno-asynchronous-unwind-tables \
-
-toybox_version := $(shell git -C $(LOCAL_PATH) rev-parse --short=12 HEAD 2>/dev/null)-android
-LOCAL_CFLAGS += -DTOYBOX_VERSION='"$(toybox_version)"'
-
 LOCAL_CLANG := true
-
-LOCAL_SHARED_LIBRARIES := libcutils libselinux
 
 # This doesn't actually prevent us from dragging in libc++ at runtime
 # because libnetd_client.so is C++.
@@ -247,159 +245,25 @@ LOCAL_MODULE_STEM := toybox
 LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
 LOCAL_MODULE_TAGS := optional
 
-# dupes: dd ls
-# useless?: arp diff flock freeramdisk fsfreeze ftpget host install
-#           makedevs mkfifo nbd-client partprobe pivot_root pwdx readahead
-#           reset resize rev rfkill switch_root telnet test tty vconfig
-#           watch xxd xzcat
-# prefer BSD netcat instead?: nc netcat
-# prefer efs2progs instead?: blkid chattr lsattr
-
-ALL_TOOLS := \
-    acpi \
-    basename \
-    blkid \
-    blockdev \
-    bzcat \
-    cal \
-    cat \
-    chcon \
-    chgrp \
-    chmod \
-    chown \
-    chroot \
-    cksum \
-    clear \
-    comm \
-    cmp \
-    cp \
-    cpio \
-    cut \
-    date \
-    df \
-    dirname \
-    dmesg \
-    dos2unix \
-    du \
-    echo \
-    env \
-    expand \
-    expr \
-    fallocate \
-    false \
-    find \
-    free \
-    getenforce \
-    getprop \
-    grep \
-    groups \
-    head \
-    hostname \
-    hwclock \
-    id \
-    ifconfig \
-    inotifyd \
-    insmod \
-    ionice \
-    kill \
-    load_policy \
-    ln \
-    logname \
-    losetup \
-    lsmod \
-    lsof \
-    lsusb \
-    md5sum \
-    mkdir \
-    mknod \
-    mkswap \
-    mktemp \
-    modinfo \
-    more \
-    mount \
-    mountpoint \
-    mv \
-    netstat \
-    nice \
-    nl \
-    nohup \
-    od \
-    paste \
-    patch \
-    pgrep \
-    pidof \
-    pkill \
-    pmap \
-    printenv \
-    printf \
-    pwd \
-    readlink \
-    realpath \
-    renice \
-    restorecon \
-    rm \
-    rmdir \
-    rmmod \
-    route \
-    runcon \
-    sed \
-    seq \
-    setenforce \
-    setprop \
-    setsid \
-    sha1sum \
-    sleep \
-    sort \
-    split \
-    stat \
-    strings \
-    swapoff \
-    swapon \
-    sync \
-    sysctl \
-    tac \
-    tail \
-    tar \
-    taskset \
-    tee \
-    time \
-    timeout \
-    touch \
-    tr \
-    true \
-    truncate \
-    umount \
-    uname \
-    uniq \
-    unix2dos \
-    uptime \
-    usleep \
-    vmstat \
-    wc \
-    which \
-    whoami \
-    xargs \
-    yes
-
-# Install the symlinks.
-LOCAL_POST_INSTALL_CMD := $(hide) $(foreach t,$(ALL_TOOLS),ln -sf toybox $(TARGET_RECOVERY_ROOT_OUT)/sbin/$(t);)
+LOCAL_SHARED_LIBRARIES := libcutils libselinux
 
 include $(BUILD_EXECUTABLE)
 
-# Make /sbin/toolbox launchers for each tool
-SYMLINKS := $(addprefix $(TARGET_RECOVERY_ROOT_OUT)/sbin/,$(ALL_TOOLS))
-$(SYMLINKS): TOYBOX_BINARY := $(LOCAL_MODULE_STEM)
-$(SYMLINKS): $(LOCAL_INSTALLED_MODULE) $(LOCAL_PATH)/Android.mk
-	@echo "Symlink: $@ -> $(TOYBOX_BINARY)"
-	@mkdir -p $(dir $@)
-	@rm -rf $@
-	$(hide) ln -sf $(TOYBOX_BINARY) $@
+# for dumping the list of toys
+TOYBOX_INSTLIST := $(HOST_OUT_EXECUTABLES)/toybox-instlist
 
-include $(CLEAR_VARS)
-LOCAL_MODULE := toybox_symlinks
-LOCAL_MODULE_TAGS := optional
-LOCAL_ADDITIONAL_DEPENDENCIES := $(SYMLINKS)
-include $(BUILD_PHONY_PACKAGE)
+# we still want a link for ls/ps/getprop/setprop, but the toolbox version needs to
+# stick around for compatibility reasons, for now.
+TOYS_WITHOUT_LINKS :=  ls ps getprop setprop
+
+# Run toybox-instlist and generate the rest of the symlinks
+toybox_symlinks: $(TOYBOX_INSTLIST)
+toybox_symlinks: TOY_LIST=$(shell $(TOYBOX_INSTLIST))
+toybox_symlinks: TOYBOX_BINARY := $(TARGET_RECOVERY_ROOT_OUT)/sbin/toybox
+toybox_symlinks:
+	@echo -e ${CL_CYN}"Generate Toybox links:"${CL_RST} $(TOY_LIST)
+	@mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/sbin
+	$(hide) $(foreach t,$(filter-out $(TOYS_WITHOUT_LINKS),$(TOY_LIST)),ln -sf toybox $(TARGET_RECOVERY_ROOT_OUT)/sbin/$(t);)
 
 endif
 
