@@ -252,9 +252,9 @@ include $(BUILD_EXECUTABLE)
 # for dumping the list of toys
 TOYBOX_INSTLIST := $(HOST_OUT_EXECUTABLES)/toybox-instlist
 
-# we still want a link for ls/ps, but the toolbox version needs to
+# we still want a link for ls/ps/getprop/setprop, but the toolbox version needs to
 # stick around for compatibility reasons, for now.
-TOYS_WITHOUT_LINKS :=  ls ps
+TOYS_WITHOUT_LINKS :=  ls ps getprop setprop
 
 # Run toybox-instlist and generate the rest of the symlinks
 toybox_symlinks: $(TOYBOX_INSTLIST)
