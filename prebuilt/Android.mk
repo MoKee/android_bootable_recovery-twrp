@@ -14,7 +14,11 @@ RELINK_SOURCE_FILES += $(TARGET_RECOVERY_ROOT_OUT)/sbin/dump_image
 RELINK_SOURCE_FILES += $(TARGET_RECOVERY_ROOT_OUT)/sbin/flash_image
 RELINK_SOURCE_FILES += $(TARGET_RECOVERY_ROOT_OUT)/sbin/erase_image
 ifneq ($(TW_USE_TOOLBOX), true)
-	RELINK_SOURCE_FILES += $(TARGET_OUT_OPTIONAL_EXECUTABLES)/busybox
+	ifneq ($(wildcard external/busybox/Android.mk),)
+		RELINK_SOURCE_FILES += $(TARGET_OUT_OPTIONAL_EXECUTABLES)/busybox
+	else
+		RELINK_SOURCE_FILES += $(TARGET_RECOVERY_ROOT_OUT)/sbin/busybox
+	endif
 else
 	RELINK_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/sh
 	RELINK_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libcrypto.so
@@ -469,4 +473,53 @@ ifneq ($(TW_EXCLUDE_SUPERSU), true)
 	LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/supersu
 	LOCAL_SRC_FILES := $(LOCAL_MODULE)
 	include $(BUILD_PREBUILT)
+endif
+# for prebuilt busybox
+ifneq ($(TW_USE_TOOLBOX), true)
+ifeq ($(wildcard external/busybox/Android.mk),)
+ifeq ($(TARGET_ARCH), arm)
+	#busybox for arm platform
+	include $(CLEAR_VARS)
+	LOCAL_MODULE := busyboxarm
+	LOCAL_MODULE_STEM := busybox
+	LOCAL_MODULE_TAGS := eng
+	LOCAL_MODULE_CLASS := RECOVERY_EXECUTABLES
+	LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+	LOCAL_SRC_FILES := busybox_arm
+	include $(BUILD_PREBUILT)
+endif
+ifeq ($(TARGET_ARCH), arm64)
+	#busybox for arm platform
+	include $(CLEAR_VARS)
+	LOCAL_MODULE := busyboxarm64
+	LOCAL_MODULE_STEM := busybox
+	LOCAL_MODULE_TAGS := eng
+	LOCAL_MODULE_CLASS := RECOVERY_EXECUTABLES
+	LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+	LOCAL_SRC_FILES := busybox_arm64
+	include $(BUILD_PREBUILT)
+endif
+ifeq ($(TARGET_ARCH), x86_64)
+	#busybox for intel x86_64 platform
+	include $(CLEAR_VARS)
+	LOCAL_MODULE := busybox_x86_64
+	LOCAL_MODULE_STEM := busybox
+	LOCAL_MODULE_TAGS := eng
+	LOCAL_MODULE_CLASS := RECOVERY_EXECUTABLES
+	LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+	LOCAL_SRC_FILES := busybox_x86_64
+	include $(BUILD_PREBUILT)
+endif
+ifeq ($(TARGET_ARCH), x86)
+	#busybox for intel x86 platform
+	include $(CLEAR_VARS)
+	LOCAL_MODULE := busybox_x86
+	LOCAL_MODULE_STEM := busybox
+	LOCAL_MODULE_TAGS := eng
+	LOCAL_MODULE_CLASS := RECOVERY_EXECUTABLES
+	LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+	LOCAL_SRC_FILES := busybox_x86
+	include $(BUILD_PREBUILT)
+endif
+endif
 endif
