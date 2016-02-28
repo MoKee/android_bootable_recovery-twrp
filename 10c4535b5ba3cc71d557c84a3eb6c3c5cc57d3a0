@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffb38bf4_7a74799a",
+        "filename": "Android.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 1318
+      },
+      "writtenOn": "2016-02-28T11:09:28Z",
+      "side": 1,
+      "message": "need to change to $(shell cat $(LOCAL_PATH)/prebuilt/busybox-full.links)",
+      "range": {
+        "startLine": 473,
+        "startChar": 18,
+        "endLine": 473,
+        "endChar": 58
+      },
+      "revId": "10c4535b5ba3cc71d557c84a3eb6c3c5cc57d3a0",
+      "serverId": "83d63960-fecf-4fd1-a7f6-e01518638a62",
+      "unresolved": false
+    }
+  ]
+}
