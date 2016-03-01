@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffb38bf4_7ad0f951",
+        "filename": "prebuilt/Android.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 1318
+      },
+      "writtenOn": "2016-03-01T15:19:49Z",
+      "side": 1,
+      "message": "use filter to detach arm \u0026\u0026 arm64 platform \nifneq($(filter arm arm64, $(TARGET_ARCH))),)",
+      "range": {
+        "startLine": 480,
+        "startChar": 0,
+        "endLine": 480,
+        "endChar": 26
+      },
+      "revId": "df1641451179edd1b02c92acf00c281246b01926",
+      "serverId": "83d63960-fecf-4fd1-a7f6-e01518638a62",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffb38bf4_9ac4ed94",
+        "filename": "prebuilt/Android.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 501,
+      "author": {
+        "id": 1318
+      },
+      "writtenOn": "2016-03-01T15:19:49Z",
+      "side": 1,
+      "message": "remove it , we only use busyboxarm , no matherr arm \u0026\u0026 arm64",
+      "range": {
+        "startLine": 491,
+        "startChar": 0,
+        "endLine": 501,
+        "endChar": 5
+      },
+      "revId": "df1641451179edd1b02c92acf00c281246b01926",
+      "serverId": "83d63960-fecf-4fd1-a7f6-e01518638a62",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffb38bf4_dabe65fe",
+        "filename": "prebuilt/Android.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 512,
+      "author": {
+        "id": 1318
+      },
+      "writtenOn": "2016-03-01T15:19:49Z",
+      "side": 1,
+      "message": "remove it , we only use busybox_x86 , no matherr intel x86 \u0026\u0026 intel x86_64",
+      "range": {
+        "startLine": 502,
+        "startChar": 0,
+        "endLine": 512,
+        "endChar": 5
+      },
+      "revId": "df1641451179edd1b02c92acf00c281246b01926",
+      "serverId": "83d63960-fecf-4fd1-a7f6-e01518638a62",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffb38bf4_bac1b183",
+        "filename": "prebuilt/Android.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 513,
+      "author": {
+        "id": 1318
+      },
+      "writtenOn": "2016-03-01T15:19:49Z",
+      "side": 1,
+      "message": "use filter to detach arm \u0026\u0026 arm64 platform \nifneq($(filter x86 x86_64, $(TARGET_ARCH))),)",
+      "range": {
+        "startLine": 513,
+        "startChar": 0,
+        "endLine": 513,
+        "endChar": 26
+      },
+      "revId": "df1641451179edd1b02c92acf00c281246b01926",
+      "serverId": "83d63960-fecf-4fd1-a7f6-e01518638a62",
+      "unresolved": false
+    }
+  ]
+}
