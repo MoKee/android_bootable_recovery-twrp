@@ -903,8 +903,24 @@ ui_print(const char* format, ...) {
     }
 }
 
+extern "C" int toybox_driver(int argc, char **argv);
+
 int
 main(int argc, char **argv) {
+    // Handle alternative invocations
+    char* command = argv[0];
+    char* stripped = strrchr(argv[0], '/');
+    if (stripped)
+        command = stripped + 1;
+
+    if (strcmp(command, "recovery") != 0) {
+        struct recovery_cmd cmd = get_command(command);
+        if (cmd.name)
+            return cmd.main_func(argc, argv);
+
+        return toybox_driver(argc, argv);
+    }
+
     time_t start = time(NULL);
 
     redirect_stdio(TEMPORARY_LOG_FILE);
