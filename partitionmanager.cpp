@@ -1039,7 +1039,8 @@ void TWPartitionManager::Set_Restore_Files(string Restore_Name) {
 			Part->Backup_FileName.resize(Part->Backup_FileName.size() - strlen(extn) + 3);
 		}
 
-		Restore_List += Part->Backup_Path + ";";
+		if (!Part->Is_SubPartition)
+			Restore_List += Part->Backup_Path + ";";
 	}
 	closedir(d);
 
@@ -1516,7 +1517,7 @@ TWPartition* TWPartitionManager::Find_Next_Storage(string Path, bool Exclude_Dat
 	if (!Path.empty()) {
 		string Search_Path = TWFunc::Get_Root_Path(Path);
 		for (; iter != Partitions.end(); iter++) {
-			if (Exclude_Data_Media && (*iter)->Has_Data_Media) {
+			if ((*iter)->Mount_Point == Search_Path) {
 				iter++;
 				break;
 			}
