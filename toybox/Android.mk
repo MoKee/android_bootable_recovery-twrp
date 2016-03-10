@@ -121,6 +121,7 @@ LOCAL_SRC_FILES := \
     toys/other/losetup.c \
     toys/other/lsattr.c \
     toys/other/lsmod.c \
+    toys/other/lspci.c \
     toys/other/lsusb.c \
     toys/other/makedevs.c \
     toys/other/mkswap.c \
@@ -162,6 +163,7 @@ LOCAL_SRC_FILES := \
     toys/pending/diff.c \
     toys/pending/expr.c \
     toys/pending/fdisk.c \
+    toys/pending/file.c \
     toys/pending/ftpget.c \
     toys/pending/host.c \
     toys/pending/lsof.c \
@@ -227,6 +229,7 @@ LOCAL_SRC_FILES := \
     toys/posix/touch.c \
     toys/posix/true.c \
     toys/posix/tty.c \
+    toys/posix/ulimit.c \
     toys/posix/uname.c \
     toys/posix/uniq.c \
     toys/posix/wc.c \
