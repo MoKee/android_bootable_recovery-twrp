@@ -377,6 +377,7 @@ ifneq ($(TW_USE_TOOLBOX), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += busybox_symlinks
 else
     ifneq ($(wildcard external/toybox/Android.mk),)
+        LOCAL_STATIC_LIBRARIES += libtoybox_driver
         LOCAL_ADDITIONAL_DEPENDENCIES += toybox_symlinks
     endif
     ifneq ($(wildcard external/zip/Android.mk),)

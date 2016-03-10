@@ -70,7 +70,18 @@ static void Print_Prop(const char *key, const char *name, void *cookie) {
 	printf("%s=%s\n", key, name);
 }
 
+extern "C" int toybox_driver(int argc, char **argv);
+
 int main(int argc, char **argv) {
+	// Handle alternative invocations
+	char* command = argv[0];
+	char* stripped = strrchr(argv[0], '/');
+	if (stripped)
+		command = stripped + 1;
+
+	if (strcmp(command, "recovery") != 0)
+		return toybox_driver(argc, argv);
+
 	// Recovery needs to install world-readable files, so clear umask
 	// set by init
 	umask(0);
