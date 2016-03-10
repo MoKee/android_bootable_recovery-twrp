@@ -372,7 +372,7 @@ ifneq ($(TW_USE_TOOLBOX), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += busybox_symlinks
 else
     ifneq ($(wildcard external/toybox/Android.mk),)
-        LOCAL_ADDITIONAL_DEPENDENCIES += toybox_symlinks
+        LOCAL_ADDITIONAL_DEPENDENCIES += toybox_recovery
     endif
     ifneq ($(wildcard external/zip/Android.mk),)
         LOCAL_ADDITIONAL_DEPENDENCIES += zip
