@@ -240,8 +240,16 @@ LOCAL_CLANG := true
 # This doesn't actually prevent us from dragging in libc++ at runtime
 # because libnetd_client.so is C++.
 LOCAL_CXX_STL := none
+# When i build toys/posix/ulimit.c , the compiler can not found the symbol of prlimit
+# so i just grap it from util-linux/sys-utils/prilimit.c
+#TW_HAVE_PRLIMIT :=
+ifeq ($(TW_HAVE_PRLIMIT),)
+LOCAL_SRC_FILES += \
+		../../bootable/recovery-twrp/toybox/prlimit.c
+endif
 
 LOCAL_C_INCLUDES += bionic/libc/dns/include
+LOCAL_C_INCLUDES += bionic/libc/include
 
 LOCAL_MODULE := toybox_recovery
 LOCAL_MODULE_STEM := toybox
