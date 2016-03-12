@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bfad9398_f8fed1ac",
+        "filename": "prebuilt/Android.mk",
+        "patchSetId": 7
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1318
+      },
+      "writtenOn": "2016-03-12T05:07:55Z",
+      "side": 1,
+      "message": "it should test the platfomr_sdk_version , \non platform_sdk_version \u003c 23 didn\u0027t have toybox \nonly exits on cm-13.0 branch",
+      "range": {
+        "startLine": 25,
+        "startChar": 1,
+        "endLine": 25,
+        "endChar": 63
+      },
+      "revId": "4d7607a40f640876c5ecaeda592e1b3e4053274c",
+      "serverId": "83d63960-fecf-4fd1-a7f6-e01518638a62",
+      "unresolved": false
+    }
+  ]
+}
