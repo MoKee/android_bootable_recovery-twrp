@@ -88,7 +88,8 @@ int OpenRecoveryScript::run_script_file(void) {
 	int ret_val = 0, cindex, line_len, i, remove_nl, install_cmd = 0, sideload = 0;
 	char script_line[SCRIPT_COMMAND_SIZE], command[SCRIPT_COMMAND_SIZE],
 		 value[SCRIPT_COMMAND_SIZE], mount[SCRIPT_COMMAND_SIZE],
-		 value1[SCRIPT_COMMAND_SIZE], value2[SCRIPT_COMMAND_SIZE];
+		 value1[SCRIPT_COMMAND_SIZE], value2[SCRIPT_COMMAND_SIZE],
+		 value3[SCRIPT_COMMAND_SIZE];
 	char *val_start, *tok;
 
 	if (fp != NULL) {
@@ -176,6 +177,16 @@ int OpenRecoveryScript::run_script_file(void) {
 					strcpy(empt, "(Current Date)");
 					DataManager::SetValue(TW_BACKUP_NAME, empt);
 				}
+				//set up third parameter to deal with storage path
+				tok = strtok(NULL," ");
+				if (tok != NULL) {
+					memset(value3, 0, sizeof(value3));
+					strcpy(value3,tok);
+					DataManager::SetValue(TW_ZIP_LOCATION_VAR, value3);
+					gui_msg(Msg("tw_zip_location_var=storage path set to '{1}'")(value3));
+				}
+
+
 				ret_val = Backup_Command(value1);
 			} else if (strcmp(command, "restore") == 0) {
 				// Restore
