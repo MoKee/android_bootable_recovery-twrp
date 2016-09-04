@@ -52,7 +52,6 @@ ifeq ($(TW_USE_TOOLBOX), true)
             iftop \
             ioctl \
             log \
-            ls \
             nandread \
             newfs_msdos \
             ps \
@@ -217,11 +216,9 @@ ifeq ($(shell test $(PLATFORM_SDK_VERSION) -gt 22; echo $$?),0)
     # including busybox.
     LOCAL_SRC_FILES += \
         ../../../$(TWRP_TOOLBOX_PATH)/getprop.c \
-        ../../../$(TWRP_TOOLBOX_PATH)/setprop.c
+        ../../../$(TWRP_TOOLBOX_PATH)/setprop.c \
+        ../../../$(TWRP_TOOLBOX_PATH)/ls.c
     OUR_TOOLS += getprop setprop
-    ifneq ($(TW_USE_TOOLBOX), true)
-        LOCAL_SRC_FILES += ../../../$(TWRP_TOOLBOX_PATH)/ls.c
-    endif
 endif
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -gt 23; echo $$?),0)
     # Rule for making start and stop in N trees
