@@ -58,7 +58,7 @@ void gr_texticon(int x, int y, GRSurface* icon);
 void gr_set_font(__attribute__ ((unused))const char* name);
 
 const GRFont* gr_sys_font();
-int gr_init_font(const char* name, GRFont* dest);
+int gr_init_font(const char* name, GRFont** dest);
 void gr_text(const GRFont* font, int x, int y, const char *s, bool bold);
 int gr_measure(const GRFont* font, const char *s);
 void gr_font_size(const GRFont* font, int *x, int *y);
