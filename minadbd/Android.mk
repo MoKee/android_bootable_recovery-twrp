@@ -23,6 +23,13 @@ LOCAL_CFLAGS := $(minadbd_cflags)
 LOCAL_CONLY_FLAGS := -Wimplicit-function-declaration
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/.. system/core/adb
 LOCAL_WHOLE_STATIC_LIBRARIES := libadbd
+
+ifeq ($(shell test $(CM_PLATFORM_SDK_VERSION) -ge 7; echo $$?),0)
+LOCAL_WHOLE_STATIC_LIBRARIES += libcrypto_utils_static libcrypto_static
+else ifeq ($(shell test $(MK_PLATFORM_SDK_VERSION) -ge 7; echo $$?),0)
+LOCAL_WHOLE_STATIC_LIBRARIES += libcrypto_utils_static libcrypto_static
+endif
+
 LOCAL_SHARED_LIBRARIES := libbase liblog libcutils libc
 
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 24; echo $$?),0)
