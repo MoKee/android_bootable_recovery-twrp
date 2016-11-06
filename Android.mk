@@ -459,7 +459,11 @@ else
 endif
 endif
 ifeq ($(TARGET_USERIMAGES_USE_F2FS), true)
-ifeq ($(shell test $(MK_PLATFORM_SDK_VERSION) -ge 3; echo $$?),0)
+ifeq ($(shell test $(CM_PLATFORM_SDK_VERSION) -ge 3; echo $$?),0)
+    LOCAL_ADDITIONAL_DEPENDENCIES += \
+        fsck.f2fs \
+        mkfs.f2fs
+else ifeq ($(shell test $(MK_PLATFORM_SDK_VERSION) -ge 3; echo $$?),0)
     LOCAL_ADDITIONAL_DEPENDENCIES += \
         fsck.f2fs \
         mkfs.f2fs
