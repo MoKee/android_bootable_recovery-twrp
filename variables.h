@@ -17,7 +17,7 @@
 #ifndef _VARIABLES_HEADER_
 #define _VARIABLES_HEADER_
 
-#define TW_VERSION_STR              "3.0.2-0"
+#define TW_VERSION_STR              "3.0.3-0"
 
 #define TW_USE_COMPRESSION_VAR      "tw_use_compression"
 #define TW_FILENAME                 "tw_filename"
@@ -132,6 +132,7 @@
 #define TW_IS_DECRYPTED             "tw_is_decrypted"
 #define TW_CRYPTO_PWTYPE            "tw_crypto_pwtype"
 #define TW_HAS_CRYPTO               "tw_has_crypto"
+#define TW_IS_FBE                   "tw_is_fbe"
 #define TW_CRYPTO_PASSWORD          "tw_crypto_password"
 #define TW_SDEXT_DISABLE_EXT4       "tw_sdext_disable_ext4"
 #define TW_MILITARY_TIME            "tw_military_time"
