@@ -45,9 +45,8 @@ ifneq ($(wildcard external/lz4/Android.mk),)
 endif
 endif
 
-ifneq ($(wildcard system/core/libcrypto_utils/Android.mk),)
-     LOCAL_C_INCLUDES += system/core/libcrypto_utils/include
-     LOCAL_STATIC_LIBRARIES += libcrypto_utils_static
+ifeq ($(WITH_CRYPTO_UTILS), true)
+    LOCAL_STATIC_LIBRARIES += libcrypto_utils_static
 endif
 
 LOCAL_STATIC_LIBRARIES += $(TARGET_RECOVERY_UPDATER_LIBS) $(TARGET_RECOVERY_UPDATER_EXTRA_LIBS)
