@@ -39,7 +39,7 @@
 
 static std::string misc_blkdev;
 
-void set_misc_device(const char* type, const char* name) {
+void set_misc_device(std::string name) {
     misc_blkdev = name;
 }
 
@@ -159,7 +159,10 @@ static bool write_misc_partition(const void* p, size_t size, size_t offset, std:
     *err = "no misc device set";
     return false;
   }
-  int fd = (open(misc_blk_device.c_str(), O_WRONLY | O_SYNC));
+  int open_flags = O_WRONLY | O_SYNC;
+  if (offset > 0)
+    open_flags = O_RDWR | O_APPEND | O_SYNC;
+  int fd = (open(misc_blk_device.c_str(), open_flags));
   if (fd == -1) {
     *err = "failed to open " + misc_blk_device + ": ";
     *err += strerror(errno);

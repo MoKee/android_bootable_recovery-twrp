@@ -386,9 +386,9 @@
 			</checkbox>
 
 			<checkbox>
-				<placement x="%indent%" y="%row13a_y%" />
+				<placement x="%indent%" y="%row13a_y%"/>
 				<text>{@install_reboot_chk=Reboot after installation is complete}</text>
-				<data variable="tw_install_reboot" />
+				<data variable="tw_install_reboot"/>
 			</checkbox>
 
 			<checkbox>
@@ -3410,8 +3410,8 @@
 				<actions>
 					<action function="set">tw_back=advanced</action>
 					<action function="set">tw_action=copylog</action>
-                                        <action function="set">tw_action_text1={@copying_log=Copy Logs to SD Card}</action>
-                                        <action function="set">tw_complete_text1={@copy_log_complete=Logs Copy Completed}</action>
+					<action function="set">tw_action_text1={@copying_log=Copy Logs to SD Card}</action>
+					<action function="set">tw_complete_text1={@copy_log_complete=Logs Copy Completed}</action>
 					<action function="page">action_page</action>
 				</actions>
 			</slider>
@@ -3427,7 +3427,6 @@
 					<action function="page">advanced</action>
 				</actions>
 			</action>
-
 		</page>
 
 		<page name="advanced">
@@ -3779,6 +3778,11 @@
 				<text>{@swipe_to_unlock=Swipe to Unlock}</text>
 				<action function="overlay"/>
 			</slider>
+
+			<action>
+				<touch key="power"/>
+				<action function="togglebacklight"/>
+			</action>
 		</page>
 
 		<page name="filemanagerlist">
@@ -4753,6 +4757,11 @@
 				<placement x="0" y="%navbar_y%" w="%screen_width%" h="%navbar_height%"/>
 				<action function="overlay"/>
 			</button>
+
+			<action>
+				<touch key="power"/>
+				<action function="togglebacklight"/>
+			</action>
 
 			<action>
 				<touch key="power+voldown"/>

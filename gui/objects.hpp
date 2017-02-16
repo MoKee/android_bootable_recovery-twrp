@@ -363,6 +363,7 @@ protected:
 	int checkpartitionlifetimewrites(std::string arg);
 	int mountsystemtoggle(std::string arg);
 	int setlanguage(std::string arg);
+	int togglebacklight(std::string arg);
 	int twcmd(std::string arg);
 	int setbootslot(std::string arg);
 	int installapp(std::string arg);
@@ -1234,8 +1235,6 @@ COLOR LoadAttrColor(xml_node<>* element, const char* attrname, COLOR defaultvalu
 FontResource* LoadAttrFont(xml_node<>* element, const char* attrname);
 ImageResource* LoadAttrImage(xml_node<>* element, const char* attrname);
 AnimationResource* LoadAttrAnimation(xml_node<>* element, const char* attrname);
-
 bool LoadPlacement(xml_node<>* node, int* x, int* y, int* w = NULL, int* h = NULL, Placement* placement = NULL);
 
 #endif  // _OBJECTS_HEADER
-

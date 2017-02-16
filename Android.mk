@@ -40,6 +40,12 @@ TWHTCD_PATH := $(TWRES_PATH)htcd/
 
 TARGET_RECOVERY_GUI := true
 
+ifneq ($(TW_DEVICE_VERSION),)
+    LOCAL_CFLAGS += -DTW_DEVICE_VERSION='"-$(TW_DEVICE_VERSION)"'
+else
+    LOCAL_CFLAGS += -DTW_DEVICE_VERSION='"-0"'
+endif
+
 LOCAL_SRC_FILES := \
     twrp.cpp \
     fixContexts.cpp \
@@ -157,25 +163,16 @@ ifeq ($(TARGET_USERIMAGES_USE_EXT4), true)
         #LOCAL_STATIC_LIBRARIES += liblz4
     endif
 endif
-ifneq ($(wildcard external/libselinux/Android.mk),)
-    TWHAVE_SELINUX := true
-endif
-ifeq ($(TWHAVE_SELINUX), true)
-  #LOCAL_C_INCLUDES += external/libselinux/include
-  #LOCAL_STATIC_LIBRARIES += libselinux
-  #LOCAL_CFLAGS += -DHAVE_SELINUX -g
-endif # HAVE_SELINUX
-ifeq ($(TWHAVE_SELINUX), true)
-    LOCAL_C_INCLUDES += external/libselinux/include
-    LOCAL_SHARED_LIBRARIES += libselinux
-    LOCAL_CFLAGS += -DHAVE_SELINUX -g
-    ifneq ($(TARGET_USERIMAGES_USE_EXT4), true)
-        LOCAL_CFLAGS += -DUSE_EXT4
-        LOCAL_C_INCLUDES += system/extras/ext4_utils
-        LOCAL_SHARED_LIBRARIES += libext4_utils
-        ifneq ($(wildcard external/lz4/Android.mk),)
-            LOCAL_STATIC_LIBRARIES += liblz4
-        endif
+
+LOCAL_C_INCLUDES += external/libselinux/include
+LOCAL_SHARED_LIBRARIES += libselinux
+LOCAL_CFLAGS += -g
+ifneq ($(TARGET_USERIMAGES_USE_EXT4), true)
+    LOCAL_CFLAGS += -DUSE_EXT4
+    LOCAL_C_INCLUDES += system/extras/ext4_utils
+    LOCAL_SHARED_LIBRARIES += libext4_utils
+    ifneq ($(wildcard external/lz4/Android.mk),)
+        LOCAL_STATIC_LIBRARIES += liblz4
     endif
 endif
 
@@ -368,7 +365,6 @@ LOCAL_ADDITIONAL_DEPENDENCIES += \
     teamwin \
     toolbox_symlinks \
     twrp \
-    unpigz_symlink \
     fsck.fat \
     fatlabel \
     mkfs.fat \
@@ -388,6 +384,11 @@ else
 endif
 ifneq ($(TW_USE_TOOLBOX), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += busybox_symlinks
+    ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 24; echo $$?),0)
+        LOCAL_POST_INSTALL_CMD := \
+            $(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/sbin && \
+            ln -sf /sbin/busybox $(TARGET_RECOVERY_ROOT_OUT)/sbin/sh
+    endif
 else
     ifneq ($(wildcard external/toybox/Android.mk),)
         LOCAL_ADDITIONAL_DEPENDENCIES += toybox_recovery
@@ -399,6 +400,7 @@ else
         LOCAL_ADDITIONAL_DEPENDENCIES += unzip
     endif
 endif
+
 ifneq ($(TW_NO_EXFAT), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += mkexfatfs fsckexfat
     ifneq ($(TW_NO_EXFAT_FUSE), true)
@@ -511,10 +513,8 @@ endif
 
 # If busybox does not have restorecon, assume it does not have SELinux support.
 # Then, let toolbox provide 'ls' so -Z is available to list SELinux contexts.
-ifeq ($(TWHAVE_SELINUX), true)
-	ifeq ($(filter restorecon, $(notdir $(BUSYBOX_LINKS))),)
-		exclude += ls
-	endif
+ifeq ($(filter restorecon, $(notdir $(BUSYBOX_LINKS))),)
+    exclude += ls
 endif
 
 RECOVERY_BUSYBOX_TOOLS := $(filter-out $(exclude), $(notdir $(BUSYBOX_LINKS)))
@@ -610,10 +610,6 @@ ifeq ($(AB_OTA_UPDATER),true)
     LOCAL_CFLAGS += -DAB_OTA_UPDATER=1
 endif
 
-ifneq ($(BOARD_RECOVERY_BLDRMSG_OFFSET),)
-    LOCAL_CFLAGS += -DBOARD_RECOVERY_BLDRMSG_OFFSET=$(BOARD_RECOVERY_BLDRMSG_OFFSET)
-endif
-
 include $(BUILD_SHARED_LIBRARY)
 
 # All the APIs for testing
@@ -625,7 +621,7 @@ LOCAL_SRC_FILES := \
     asn1_decoder.cpp \
     verifier.cpp \
     ui.cpp
-LOCAL_STATIC_LIBRARIES := libcrypto
+LOCAL_STATIC_LIBRARIES := libcrypto_static
 include $(BUILD_STATIC_LIBRARY)
 
 commands_recovery_local_path := $(LOCAL_PATH)

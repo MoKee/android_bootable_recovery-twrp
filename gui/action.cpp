@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <dirent.h>
-#include <pwd.h>
+#include <private/android_filesystem_config.h>
 
 #include <string>
 #include <sstream>
@@ -62,7 +62,6 @@ GUIAction::mapFunc GUIAction::mf;
 std::set<string> GUIAction::setActionsRunningInCallerThread;
 static string zip_queue[10];
 static int zip_queue_index;
-static pthread_t terminal_command;
 pid_t sideload_child_pid;
 
 static void *ActionThread_work_wrapper(void *data);
@@ -107,7 +106,7 @@ ActionThread::ActionThread()
 ActionThread::~ActionThread()
 {
 	pthread_mutex_lock(&m_act_lock);
-	if(m_thread_running) {
+	if (m_thread_running) {
 		pthread_mutex_unlock(&m_act_lock);
 		pthread_join(m_thread, NULL);
 	} else {
@@ -199,6 +198,7 @@ GUIAction::GUIAction(xml_node<>* node)
 		ADD_ACTION(mountsystemtoggle);
 		ADD_ACTION(setlanguage);
 		ADD_ACTION(checkforapp);
+		ADD_ACTION(togglebacklight);
 
 		// remember actions that run in the caller thread
 		for (mapFunc::const_iterator it = mf.begin(); it != mf.end(); ++it)
@@ -262,7 +262,7 @@ GUIAction::GUIAction(xml_node<>* node)
 		if (attr)
 		{
 			std::vector<std::string> keys = TWFunc::Split_String(attr->value(), "+");
-			for(size_t i = 0; i < keys.size(); ++i)
+			for (size_t i = 0; i < keys.size(); ++i)
 			{
 				const int key = getKeyByName(keys[i]);
 				mKeys[key] = false;
@@ -297,7 +297,7 @@ int GUIAction::NotifyTouch(TOUCH_STATE state, int x __unused, int y __unused)
 int GUIAction::NotifyKey(int key, bool down)
 {
 	std::map<int, bool>::iterator itr = mKeys.find(key);
-	if(itr == mKeys.end())
+	if (itr == mKeys.end())
 		return 1;
 
 	bool prevState = itr->second;
@@ -307,20 +307,20 @@ int GUIAction::NotifyKey(int key, bool down)
 	// doesn't trigger with multi-key actions.
 	// Else, check if all buttons are pressed, then consume their release events
 	// so they don't trigger one-button actions and reset mKeys pressed status
-	if(mKeys.size() == 1) {
-		if(!down && prevState) {
+	if (mKeys.size() == 1) {
+		if (!down && prevState) {
 			doActions();
 			return 0;
 		}
-	} else if(down) {
-		for(itr = mKeys.begin(); itr != mKeys.end(); ++itr) {
-			if(!itr->second)
+	} else if (down) {
+		for (itr = mKeys.begin(); itr != mKeys.end(); ++itr) {
+			if (!itr->second)
 				return 1;
 		}
 
 		// Passed, all req buttons are pressed, reset them and consume release events
 		HardwareKeyboard *kb = PageManager::GetHardwareKeyboard();
-		for(itr = mKeys.begin(); itr != mKeys.end(); ++itr) {
+		for (itr = mKeys.begin(); itr != mKeys.end(); ++itr) {
 			kb->ConsumeKeyRelease(itr->first);
 			itr->second = false;
 		}
@@ -338,7 +338,7 @@ int GUIAction::NotifyVarChange(const std::string& varName, const std::string& va
 
 	if (varName.empty() && !isConditionValid() && mKeys.empty() && !mActionW)
 		doActions();
-	else if((varName.empty() || IsConditionVariable(varName)) && isConditionValid() && isConditionTrue())
+	else if ((varName.empty() || IsConditionVariable(varName)) && isConditionValid() && isConditionTrue())
 		doActions();
 
 	return 0;
@@ -707,7 +707,7 @@ int GUIAction::compute(std::string arg)
 		int divide_by = atoi(divide_by_str.c_str());
 		int value;
 
-		if(divide_by != 0)
+		if (divide_by != 0)
 		{
 			DataManager::GetValue(varName, value);
 			DataManager::SetValue(varName, value/divide_by);
@@ -855,13 +855,12 @@ int GUIAction::checkpartitionlist(std::string arg)
 	} else {
 		DataManager::SetValue("tw_check_partition_list", 0);
 	}
-		return 0;
+	return 0;
 }
 
 int GUIAction::getpartitiondetails(std::string arg)
 {
 	string List, part_path;
-	int count = 0;
 
 	if (arg.empty())
 		arg = "tw_wipe_list";
@@ -939,23 +938,17 @@ int GUIAction::screenshot(std::string arg __unused)
 	time_t tm;
 	char path[256];
 	int path_len;
-	uid_t uid = -1;
-	gid_t gid = -1;
-
-	struct passwd *pwd = getpwnam("media_rw");
-	if(pwd) {
-		uid = pwd->pw_uid;
-		gid = pwd->pw_gid;
-	}
+	uid_t uid = AID_MEDIA_RW;
+	gid_t gid = AID_MEDIA_RW;
 
 	const std::string storage = DataManager::GetCurrentStoragePath();
-	if(PartitionManager.Is_Mounted_By_Path(storage)) {
+	if (PartitionManager.Is_Mounted_By_Path(storage)) {
 		snprintf(path, sizeof(path), "%s/Pictures/Screenshots/", storage.c_str());
 	} else {
 		strcpy(path, "/tmp/");
 	}
 
-	if(!TWFunc::Create_Dir_Recursive(path, 0775, uid, gid))
+	if (!TWFunc::Create_Dir_Recursive(path, 0775, uid, gid))
 		return 0;
 
 	tm = time(NULL);
@@ -965,7 +958,7 @@ int GUIAction::screenshot(std::string arg __unused)
 	strftime(path+path_len, sizeof(path)-path_len, "Screenshot_%Y-%m-%d-%H-%M-%S.png", localtime(&tm));
 
 	int res = gr_save_screenshot(path);
-	if(res == 0) {
+	if (res == 0) {
 		chmod(path, 0666);
 		chown(path, uid, gid);
 
@@ -1078,7 +1071,7 @@ int GUIAction::wipe(std::string arg)
 		else if (arg == "DATAMEDIA") {
 			ret_val = PartitionManager.Format_Data();
 		} else if (arg == "INTERNAL") {
-			int has_datamedia, dual_storage;
+			int has_datamedia;
 
 			DataManager::GetValue(TW_HAS_DATA_MEDIA, has_datamedia);
 			if (has_datamedia) {
@@ -1097,7 +1090,6 @@ int GUIAction::wipe(std::string arg)
 			string Wipe_List, wipe_path;
 			bool skip = false;
 			ret_val = true;
-			TWPartition* wipe_part = NULL;
 
 			DataManager::GetValue("tw_wipe_list", Wipe_List);
 			LOGINFO("wipe list '%s'\n", Wipe_List.c_str());
@@ -1384,11 +1376,11 @@ int GUIAction::terminalcommand(std::string arg)
 		if (fp == NULL) {
 			LOGERR("Error opening command to run (%s).\n", strerror(errno));
 		} else {
-			int fd = fileno(fp), has_data = 0, check = 0, keep_going = -1, bytes_read = 0;
+			int fd = fileno(fp), has_data = 0, check = 0, keep_going = -1;
 			struct timeval timeout;
 			fd_set fdset;
 
-			while(keep_going)
+			while (keep_going)
 			{
 				FD_ZERO(&fdset);
 				FD_SET(fd, &fdset);
@@ -1406,7 +1398,7 @@ int GUIAction::terminalcommand(std::string arg)
 					keep_going = 0;
 				} else {
 					// Try to read output
-					if(fgets(line, sizeof(line), fp) != NULL)
+					if (fgets(line, sizeof(line), fp) != NULL)
 						gui_print("%s", line); // Display output
 					else
 						keep_going = 0; // Done executing
@@ -1425,8 +1417,6 @@ int GUIAction::terminalcommand(std::string arg)
 
 int GUIAction::killterminal(std::string arg __unused)
 {
-	int op_status = 0;
-
 	LOGINFO("Sending kill command...\n");
 	operation_start("KillCommand");
 	DataManager::SetValue("tw_operation_status", 0);
@@ -1870,13 +1860,18 @@ int GUIAction::setlanguage(std::string arg __unused)
 	return 0;
 }
 
+int GUIAction::togglebacklight(std::string arg __unused)
+{
+	blankTimer.toggleBlank();
+	return 0;
+}
+
 int GUIAction::setbootslot(std::string arg)
 {
 	operation_start("Set Boot Slot");
 	if (!simulate)
-	{
 		PartitionManager.Set_Active_Slot(arg);
-	} else
+	else
 		simulate_progress_bar();
 	operation_end(0);
 	return 0;
@@ -1884,7 +1879,6 @@ int GUIAction::setbootslot(std::string arg)
 
 int GUIAction::checkforapp(std::string arg __unused)
 {
-	int op_status = 1;
 	operation_start("Check for TWRP App");
 	if (!simulate)
 	{
@@ -1914,22 +1908,23 @@ int GUIAction::checkforapp(std::string arg __unused)
 				DataManager::SetValue("tw_app_install_status", 2); // 0 = no status, 1 = not installed, 2 = already installed
 				goto exit;
 			}
-		} else if (PartitionManager.Mount_By_Path("/data", false)) {
-			string parent_path = "/data/app";
-			DIR *d = opendir("/data/app");
-			struct dirent *p;
-			size_t len = strlen("me.twrp.twrpapp-");
-			while ((p = readdir(d))) {
-				if (!strcmp(p->d_name, ".") || !strcmp(p->d_name, ".."))
-					continue;
-				if (p->d_type == DT_DIR && strlen(p->d_name) >= len && strncmp(p->d_name, "me.twrp.twrpapp-", len) == 0) {
-					LOGINFO("App found at %s/%s\n", parent_path.c_str(), p->d_name);
+		}
+		if (PartitionManager.Mount_By_Path("/data", false)) {
+			const char parent_path[] = "/data/app";
+			const char app_prefix[] = "me.twrp.twrpapp-";
+			DIR *d = opendir(parent_path);
+			if (d) {
+				struct dirent *p;
+				while ((p = readdir(d))) {
+					if (p->d_type != DT_DIR || strlen(p->d_name) < strlen(app_prefix) || strncmp(p->d_name, app_prefix, strlen(app_prefix)))
+						continue;
 					closedir(d);
+					LOGINFO("App found at '%s/%s'\n", parent_path, p->d_name);
 					DataManager::SetValue("tw_app_install_status", 2); // 0 = no status, 1 = not installed, 2 = already installed
 					goto exit;
 				}
+				closedir(d);
 			}
-			closedir(d);
 		}
 	} else
 		simulate_progress_bar();
