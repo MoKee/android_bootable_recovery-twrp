@@ -169,7 +169,13 @@ ifeq ($(TW_INCLUDE_CRYPTO), true)
     RELINK_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libhardware.so
     RELINK_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libgpt_twrp.so
     ifeq ($(TARGET_HW_DISK_ENCRYPTION),true)
-        RELINK_SOURCE_FILES += $(TARGET_OUT_VENDOR_SHARED_LIBRARIES)/libcryptfs_hw.so
+        ifeq ($(shell test $(CM_PLATFORM_SDK_VERSION) -ge 7; echo $$?),0)
+            RELINK_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libcryptfs_hw.so
+        else ifeq ($(shell test $(MK_PLATFORM_SDK_VERSION) -ge 7; echo $$?),0)
+            RELINK_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libcryptfs_hw.so
+        else
+            RELINK_SOURCE_FILES += $(TARGET_OUT_VENDOR_SHARED_LIBRARIES)/libcryptfs_hw.so
+        endif
     endif
     # FBE files
     ifeq ($(TW_INCLUDE_CRYPTO_FBE), true)
@@ -202,6 +208,9 @@ ifneq ($(TW_EXCLUDE_ENCRYPTED_BACKUPS), true)
 endif
 ifeq ($(TARGET_USERIMAGES_USE_F2FS), true)
     ifeq ($(shell test $(CM_PLATFORM_SDK_VERSION) -ge 4; echo $$?),0)
+        RELINK_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/mkfs.f2fs
+        RELINK_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libf2fs.so
+    else ifeq ($(shell test $(MK_PLATFORM_SDK_VERSION) -ge 4; echo $$?),0)
         RELINK_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/mkfs.f2fs
         RELINK_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libf2fs.so
     else ifeq ($(shell test $(PLATFORM_SDK_VERSION) -eq 23; echo $$?),0)

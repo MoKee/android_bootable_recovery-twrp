@@ -240,6 +240,23 @@ LOCAL_SRC_FILES += \
     toys/pending/host.c \
     toys/pending/resize.c \
     toys/posix/file.c
+else ifneq ($(MK_BUILD),)
+LOCAL_SRC_FILES += \
+    toys/android/log.c \
+    toys/android/sendevent.c \
+    toys/android/start.c \
+    toys/net/ifconfig.c \
+    toys/net/netcat.c \
+    toys/net/netstat.c \
+    toys/net/rfkill.c \
+    toys/net/tunctl.c \
+    toys/other/setfattr.c \
+    toys/pending/chrt.c \
+    toys/pending/fdisk.c \
+    toys/pending/getfattr.c \
+    toys/pending/host.c \
+    toys/pending/resize.c \
+    toys/posix/file.c
 else
 LOCAL_SRC_FILES += \
     toys/other/ifconfig.c \
@@ -474,6 +491,17 @@ ALL_TOOLS += \
 endif
 # Account for master branch changes pulld into CM14.1
 ifneq ($(CM_BUILD),)
+ALL_TOOLS += \
+    chrt \
+    fdisk \
+    file \
+    getfattr \
+    host \
+    log \
+    resize \
+    setfattr
+endif
+ifneq ($(MK_BUILD),)
 ALL_TOOLS += \
     chrt \
     fdisk \
