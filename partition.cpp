@@ -911,7 +911,7 @@ void TWPartition::Setup_Data_Media() {
 		DataManager::SetValue("tw_has_internal", 1);
 		DataManager::SetValue("tw_has_data_media", 1);
 		backup_exclusions.add_absolute_dir("/data/data/com.google.android.music/files");
-		ExcludeAll(Mount_Point + "/misc/vold");
+		wipe_exclusions.add_absolute_dir(Mount_Point + "/misc/vold"); // adopted storage keys
 		ExcludeAll(Mount_Point + "/.layout_version");
 		ExcludeAll(Mount_Point + "/system/storage.xml");
 	} else {
@@ -2946,4 +2946,12 @@ void TWPartition::Revert_Adopted() {
 #else
 	LOGINFO("Revert_Adopted: no crypto support\n");
 #endif
+}
+
+void TWPartition::Set_Backup_FileName(string fname) {
+	Backup_FileName = fname;
+}
+
+string TWPartition::Get_Backup_Name() {
+	return Backup_Name;
 }
