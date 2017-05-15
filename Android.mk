@@ -663,6 +663,7 @@ include $(LOCAL_PATH)/tests/Android.mk \
     $(LOCAL_PATH)/otafault/Android.mk \
     $(LOCAL_PATH)/bootloader_message/Android.mk \
     $(LOCAL_PATH)/updater/Android.mk \
+    $(LOCAL_PATH)/mkchecker/Android.mk \
     $(LOCAL_PATH)/update_verifier/Android.mk \
     $(LOCAL_PATH)/applypatch/Android.mk
 
