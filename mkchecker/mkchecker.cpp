@@ -110,6 +110,7 @@ int main(int argc, char** argv) {
     if (sysMapFile(package_filename, &map) != 0) {
         fprintf(logf, "zip=failed to map package %s\n", argv[1]);
         fprintf(logf, "exit_status=%d\n", 3);
+        fclose(logf);
         return 3;
     }
     ZipArchive za;
@@ -119,6 +120,7 @@ int main(int argc, char** argv) {
         fprintf(logf, "zip=failed to open package %s: %s\n", argv[1],
                 strerror(err));
         fprintf(logf, "exit_status=%d\n", 3);
+        fclose(logf);
         return 3;
     }
     ota_io_init(&za);
@@ -128,12 +130,14 @@ int main(int argc, char** argv) {
         fprintf(logf, "find=failed to find %s in %s\n", SCRIPT_NAME,
                 package_filename);
         fprintf(logf, "exit_status=%d\n", 4);
+        fclose(logf);
         return 4;
     }
     char* script = reinterpret_cast<char*>(malloc(script_entry->uncompLen+1));
     if (!mzReadZipEntry(&za, script_entry, script, script_entry->uncompLen)) {
         fprintf(logf, "read=failed to read script from package\n");
         fprintf(logf, "exit_status=%d\n", 5);
+        fclose(logf);
         return 5;
     }
     script[script_entry->uncompLen] = '\0';
@@ -143,6 +147,7 @@ int main(int argc, char** argv) {
         fprintf(logf, "find=failed to find %s in %s\n", CHECK_SCRIPT_NAME,
                 package_filename);
         fprintf(logf, "exit_status=%d\n", 4);
+        fclose(logf);
         return 4;
     }
     char* check_script = reinterpret_cast<char*>
@@ -151,6 +156,7 @@ int main(int argc, char** argv) {
             check_script_entry->uncompLen)) {
         fprintf(logf, "read=failed to read check script from package\n");
         fprintf(logf, "exit_status=%d\n", 5);
+        fclose(logf);
         return 5;
     }
     check_script[check_script_entry->uncompLen] = '\0';
@@ -171,6 +177,7 @@ int main(int argc, char** argv) {
     if (error != 0 || error_count > 0) {
         fprintf(logf, "parse=%d errors\n", error_count);
         fprintf(logf, "exit_status=%d\n", 6);
+        fclose(logf);
         return 6;
     }
 
@@ -181,6 +188,7 @@ int main(int argc, char** argv) {
     if (error != 0 || error_count > 0) {
         fprintf(logf, "checker_parse=%d errors\n", error_count);
         fprintf(logf, "exit_status=%d\n", 6);
+        fclose(logf);
         return 6;
     }
 
@@ -191,6 +199,7 @@ int main(int argc, char** argv) {
     if (ret < 0) {
         fprintf(logf, "system=cannot create pipe\n");
         fprintf(logf, "exit_status=%d\n", 2);
+        fclose(logf);
         return 2;
     }
     FILE* cmd_pipe = fdopen(pipefd[1], "wb");
@@ -215,6 +224,7 @@ int main(int argc, char** argv) {
     if (pid == -1) {
         fprintf(logf, "system=cannot fork\n");
         fprintf(logf, "exit_status=%d\n", 2);
+        fclose(logf);
         return 2;
     } else if (pid == 0) {
         close(pipefd[0]);
@@ -259,13 +269,14 @@ int main(int argc, char** argv) {
     sysReleaseMap(&map);
     free(script);
     free(check_script);
-    fclose(logf);
 
     if (err_found) {
         fprintf(logf, "exit_status=%d\n", 7);
+        fclose(logf);
         return 7;
     } else {
         fprintf(logf, "exit_status=%d\n", 0);
+        fclose(logf);
         return 0;
     }
 }
