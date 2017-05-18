@@ -21,8 +21,10 @@
 #include <string.h>
 #include <sys/wait.h>
 
+#include <android-base/strings.h>
+
 #include "edify/expr.h"
-#include "install.h"
+#include "updater/install.h"
 #include "updater/updater.h"
 #include "minzip/Zip.h"
 #include "minzip/SysUtil.h"
@@ -53,6 +55,33 @@
 extern bool have_eio_error;
 struct selabel_handle *sehandle = NULL;
 
+static void mkChecker(State* state, const std::string& buffer) {
+    UpdaterInfo* ui = reinterpret_cast<UpdaterInfo*>(state->cookie);
+
+    // "line1\nline2\n" will be split into 3 tokens: "line1", "line2" and "".
+    // So skip sending empty strings.
+    std::vector<std::string> lines = android::base::Split(buffer, "\n");
+    for (auto& line: lines) {
+        if (!line.empty()) {
+            fprintf(ui->cmd_pipe, "mk_checker %s\n", line.c_str());
+        }
+    }
+}
+
+Value* MKCheckerFn(const char* name, State* state, int argc, Expr* argv[]) {
+    if (argc != 2) {
+        return ErrorAbort(state, kArgsParsingFailure, "%s() expects 2 args, got %d", name, argc);
+    }
+    char** args = ReadVarArgs(state, argc, argv);
+
+    std::string buffer = args[0];
+    buffer += "=";
+    buffer += args[1];
+    buffer += "\n";
+    mkChecker(state, buffer);
+    return StringValue(strdup(buffer.c_str()));
+}
+
 int main(int argc, char** argv) {
     // Various things log information to stdout or stderr more or less
     // at random (though we've tried to standardize on stdout).  The
@@ -80,6 +109,7 @@ int main(int argc, char** argv) {
     MemMapping map;
     if (sysMapFile(package_filename, &map) != 0) {
         fprintf(logf, "zip=failed to map package %s\n", argv[1]);
+        fprintf(logf, "exit_status=%d\n", 3);
         return 3;
     }
     ZipArchive za;
@@ -88,6 +118,7 @@ int main(int argc, char** argv) {
     if (err != 0) {
         fprintf(logf, "zip=failed to open package %s: %s\n", argv[1],
                 strerror(err));
+        fprintf(logf, "exit_status=%d\n", 3);
         return 3;
     }
     ota_io_init(&za);
@@ -96,11 +127,13 @@ int main(int argc, char** argv) {
     if (script_entry == NULL) {
         fprintf(logf, "find=failed to find %s in %s\n", SCRIPT_NAME,
                 package_filename);
+        fprintf(logf, "exit_status=%d\n", 4);
         return 4;
     }
     char* script = reinterpret_cast<char*>(malloc(script_entry->uncompLen+1));
     if (!mzReadZipEntry(&za, script_entry, script, script_entry->uncompLen)) {
         fprintf(logf, "read=failed to read script from package\n");
+        fprintf(logf, "exit_status=%d\n", 5);
         return 5;
     }
     script[script_entry->uncompLen] = '\0';
@@ -109,6 +142,7 @@ int main(int argc, char** argv) {
     if (check_script_entry == NULL) {
         fprintf(logf, "find=failed to find %s in %s\n", CHECK_SCRIPT_NAME,
                 package_filename);
+        fprintf(logf, "exit_status=%d\n", 4);
         return 4;
     }
     char* check_script = reinterpret_cast<char*>
@@ -116,6 +150,7 @@ int main(int argc, char** argv) {
     if (!mzReadZipEntry(&za, check_script_entry, check_script,
             check_script_entry->uncompLen)) {
         fprintf(logf, "read=failed to read check script from package\n");
+        fprintf(logf, "exit_status=%d\n", 5);
         return 5;
     }
     check_script[check_script_entry->uncompLen] = '\0';
@@ -124,6 +159,7 @@ int main(int argc, char** argv) {
 
     RegisterBuiltins();
     RegisterInstallFunctions();
+    RegisterFunction("mk_checker", MKCheckerFn);
     RegisterDeviceExtensions();
     FinishRegistration();
 
@@ -134,6 +170,7 @@ int main(int argc, char** argv) {
     int error = parse_string(script, &root, &error_count);
     if (error != 0 || error_count > 0) {
         fprintf(logf, "parse=%d errors\n", error_count);
+        fprintf(logf, "exit_status=%d\n", 6);
         return 6;
     }
 
@@ -143,6 +180,7 @@ int main(int argc, char** argv) {
     error = parse_string(check_script, &root, &error_count);
     if (error != 0 || error_count > 0) {
         fprintf(logf, "checker_parse=%d errors\n", error_count);
+        fprintf(logf, "exit_status=%d\n", 6);
         return 6;
     }
 
@@ -152,6 +190,7 @@ int main(int argc, char** argv) {
     int ret = pipe(pipefd);
     if (ret < 0) {
         fprintf(logf, "system=cannot create pipe\n");
+        fprintf(logf, "exit_status=%d\n", 2);
         return 2;
     }
     FILE* cmd_pipe = fdopen(pipefd[1], "wb");
@@ -175,6 +214,7 @@ int main(int argc, char** argv) {
 
     if (pid == -1) {
         fprintf(logf, "system=cannot fork\n");
+        fprintf(logf, "exit_status=%d\n", 2);
         return 2;
     } else if (pid == 0) {
         close(pipefd[0]);
@@ -209,6 +249,7 @@ int main(int argc, char** argv) {
 
     if (have_eio_error) {
         fprintf(logf, "system=io error encountered during execution\n");
+        fprintf(logf, "exit_status=%d\n", 2);
         return 2;
     }
 
@@ -221,8 +262,10 @@ int main(int argc, char** argv) {
     fclose(logf);
 
     if (err_found) {
+        fprintf(logf, "exit_status=%d\n", 7);
         return 7;
     } else {
+        fprintf(logf, "exit_status=%d\n", 0);
         return 0;
     }
 }

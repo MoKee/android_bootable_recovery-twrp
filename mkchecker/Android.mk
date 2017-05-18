@@ -16,7 +16,7 @@
 LOCAL_PATH := $(call my-dir)
 
 checker_src_files := \
-	install.cpp \
+	../updater/install.cpp \
 	mkchecker.cpp
 
 #
