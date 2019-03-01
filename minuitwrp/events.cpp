@@ -39,8 +39,8 @@
 #define VIBRATOR_TIMEOUT_FILE	"/sys/class/timed_output/vibrator/enable"
 #define VIBRATOR_TIME_MS    50
 
-#define LEDS_HAPTICS_DURATION_FILE  "/sys/class/leds/vibrator/duration"
-#define LEDS_HAPTICS_ACTIVATE_FILE  "/sys/class/leds/vibrator/activate"
+#define LEDS_HAPTICS_DURATION_FILE  "/sys/class/haptic/vibrator/duration"
+#define LEDS_HAPTICS_ACTIVATE_FILE  "/sys/class/haptic/vibrator/activate"
 
 #ifndef SYN_REPORT
 #define SYN_REPORT          0x00
@@ -124,7 +124,7 @@ int vibrate(int timeout_ms)
     if (fd < 0)
         return -1;
 
-    ret = snprintf(str, sizeof(str), "%d", timeout_ms);
+    ret = snprintf(str, sizeof(str), "%d", timeout_ms / 10);
     ret = write(fd, str, ret);
     close(fd);
 

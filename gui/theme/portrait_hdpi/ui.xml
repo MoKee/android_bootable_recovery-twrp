@@ -276,7 +276,7 @@
 
 			<text color="%text_color%">
 				<font resource="font_m"/>
-				<placement x="%center_x%" y="%row1_header_y%" placement="5"/>
+				<placement x="360" y="%row1_header_y%" placement="5"/>
 				<text>%tw_time%</text>
 			</text>
 
