@@ -39,8 +39,13 @@
 #define VIBRATOR_TIMEOUT_FILE	"/sys/class/timed_output/vibrator/enable"
 #define VIBRATOR_TIME_MS    50
 
+#ifdef TW_LEDS_HAPTICS_DEVICE
+#define LEDS_HAPTICS_DURATION_FILE  TW_LEDS_HAPTICS_DEVICE "/duration"
+#define LEDS_HAPTICS_ACTIVATE_FILE  TW_LEDS_HAPTICS_DEVICE "/activate"
+#else
 #define LEDS_HAPTICS_DURATION_FILE  "/sys/class/leds/vibrator/duration"
 #define LEDS_HAPTICS_ACTIVATE_FILE  "/sys/class/leds/vibrator/activate"
+#endif
 
 #ifndef SYN_REPORT
 #define SYN_REPORT          0x00

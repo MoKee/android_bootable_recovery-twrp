@@ -173,6 +173,10 @@ ifneq ($(TW_USE_LEDS_HAPTICS),)
   LOCAL_CFLAGS += -DTW_USE_LEDS_HAPTICS
 endif
 
+ifneq ($(TW_LEDS_HAPTICS_DEVICE),)
+  LOCAL_CFLAGS += -DTW_LEDS_HAPTICS_DEVICE=$(TW_LEDS_HAPTICS_DEVICE)
+endif
+
 ifeq ($(TW_DISABLE_TTF), true)
     $(warning ****************************************************************************)
     $(warning * TW_DISABLE_TTF support has been deprecated in TWRP.                      *)
